@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Brighten - Professional Image Editor SDK</title>
+  <style>
+    :root {
+      --bg: #0b0c0e;
+      --surface: #151619;
+      --surface-hover: #1f2024;
+      --border: rgba(255, 255, 255, 0.08);
+      --primary: #3b82f6;
+      --primary-hover: #60a5fa;
+      --text: #ffffff;
+      --text-muted: #94a3b8;
+      --font-stack: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: var(--font-stack);
+      line-height: 1.5;
+      overflow-x: hidden;
+    }
+
+    .site-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 24px 40px;
+      max-width: 1440px;
+      margin: 0 auto;
+      z-index: 10;
+      position: relative;
+    }
+
+    .logo {
+      font-size: 24px;
+      font-weight: 700;
+      background: linear-gradient(135deg, #fff 0%, #94a3b8 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 32px;
+    }
+
+    .nav-link {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 15px;
+      font-weight: 500;
+      transition: color 0.2s;
+    }
+
+    .nav-link:hover {
+      color: var(--text);
+    }
+
+    /* Hero Section - Centered Text */
+    .hero-section {
+      padding: 80px 20px 60px;
+      text-align: center;
+      max-width: 1000px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    h1 {
+      font-size: 64px; /* Increased size for impact */
+      line-height: 1.1;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      margin-bottom: 24px;
+      background: linear-gradient(to bottom, #fff 0%, #cbd5e1 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      max-width: 800px;
+    }
+
+    .subtitle {
+      font-size: 22px; /* Slightly larger */
+      color: var(--text-muted);
+      margin-bottom: 40px;
+      line-height: 1.6;
+      max-width: 600px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .cta-group {
+      display: flex;
+      gap: 16px;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 40px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px 32px; /* Larger click targets */
+      border-radius: 12px;
+      font-weight: 600;
+      font-size: 16px;
+      transition: all 0.2s ease;
+      text-decoration: none;
+      border: 1px solid transparent;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: white;
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+    }
+
+    .btn-primary:hover {
+      background: var(--primary-hover);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(59, 130, 246, 0.4);
+    }
+
+    .btn-outline {
+      background: rgba(255,255,255,0.03);
+      color: var(--text);
+      border-color: var(--border);
+    }
+
+    .btn-outline:hover {
+      background: rgba(255,255,255,0.08);
+      border-color: rgba(255,255,255,0.2);
+    }
+
+    /* Editor Demo Section */
+    .editor-section {
+      width: 100%;
+      padding: 0 40px 100px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      background: radial-gradient(circle at center top, rgba(59, 130, 246, 0.05) 0%, transparent 60%);
+    }
+
+    .demo-controls {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+      width: 100%;
+      max-width: 1200px;
+    }
+
+    .demo-samples {
+      display: flex;
+      gap: 16px;
+      justify-content: center;
+      margin-bottom: 8px;
+    }
+
+    .sample-thumb {
+      width: 80px;
+      height: 60px;
+      border-radius: 8px;
+      overflow: hidden;
+      cursor: pointer;
+      opacity: 0.5;
+      border: 2px solid transparent;
+      transition: all 0.2s ease;
+      position: relative;
+    }
+
+    .sample-thumb img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .sample-thumb:hover {
+      opacity: 0.8;
+      transform: translateY(-2px);
+    }
+
+    .sample-thumb.active {
+      opacity: 1;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.2);
+    }
+
+    #editor-wrapper {
+        width: 100%;
+        max-width: 1200px;
+        height: 700px;
+        background: #18181b;
+        border-radius: 16px;
+        box-shadow:
+            0 50px 100px -20px rgba(0, 0, 0, 0.7),
+            0 0 0 1px rgba(255, 255, 255, 0.08);
+        overflow: hidden;
+        position: relative;
+        isolation: isolate;
+        border: 1px solid var(--border);
+    }
+
+    #editor-wrapper .brighten-editor {
+        width: 100%;
+        height: 100%;
+        background-color: #18191b !important;
+    }
+
+    .features {
+      max-width: 1200px;
+      margin: 0 auto 120px;
+      padding: 0 40px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 32px;
+    }
+
+    .feature-card {
+      background: linear-gradient(180deg, var(--surface) 0%, rgba(21, 22, 25, 0.4) 100%);
+      border: 1px solid var(--border);
+      padding: 32px;
+      border-radius: 16px;
+      transition: transform 0.2s;
+    }
+
+    .feature-card:hover {
+        border-color: rgba(255,255,255,0.15);
+        transform: translateY(-4px);
+    }
+
+    .feature-icon {
+      width: 48px;
+      height: 48px;
+      background: rgba(59, 130, 246, 0.1);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--primary);
+      margin-bottom: 20px;
+    }
+
+    .feature-card h3 {
+      font-size: 18px;
+      margin-bottom: 12px;
+      font-weight: 600;
+    }
+
+    .feature-card p {
+      font-size: 15px;
+      color: var(--text-muted);
+      line-height: 1.6;
+    }
+
+    @media (max-width: 1024px) {
+      .hero-section {
+        padding-top: 60px;
+      }
+
+      h1 {
+        font-size: 48px;
+      }
+
+      #editor-wrapper {
+         height: 600px;
+      }
+    }
+
+    @media (max-width: 640px) {
+      h1 { font-size: 40px; }
+      #editor-wrapper { height: 500px; }
+      .nav-links { display: none; }
+      .site-header { padding: 20px; }
+      .hero-section { padding: 40px 20px; }
+      .editor-section { padding: 0 20px 80px; }
+    }
+  </style>
+</head>
+<body>
+
+  <header class="site-header">
+    <a href="#" class="logo">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2.5">
+        <circle cx="12" cy="12" r="10"/>
+        <path d="M12 6v6l4 2"/>
+      </svg>
+      Brighten
+    </a>
+    <nav class="nav-links">
+      <a href="#" class="nav-link">Documentation</a>
+      <a href="https://github.com/phishy/brighten" class="nav-link">GitHub</a>
+      <a href="#" class="nav-link">npm</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero-section">
+      <h1>The image editor SDK your users will love</h1>
+      <p class="subtitle">
+        A fully configurable editor that works beautifully on mobile and desktop. Crop, rotate, filter, annotate, adjust colors, and more.
+      </p>
+      <div class="cta-group">
+        <a href="#" class="btn btn-primary">Get Started</a>
+        <a href="https://github.com/phishy/brighten" class="btn btn-outline">View on GitHub</a>
+      </div>
+    </section>
+
+    <section class="editor-section">
+      <div class="demo-controls">
+        <div class="demo-samples">
+          <div class="sample-thumb active" data-src="https://picsum.photos/id/1015/1200/800">
+              <img src="https://picsum.photos/id/1015/200/200" alt="River">
+          </div>
+          <div class="sample-thumb" data-src="https://picsum.photos/id/1025/1200/800">
+              <img src="https://picsum.photos/id/1025/200/200" alt="Dog">
+          </div>
+          <div class="sample-thumb" data-src="https://picsum.photos/id/1043/1200/800">
+              <img src="https://picsum.photos/id/1043/200/200" alt="City">
+          </div>
+          <div class="sample-thumb" data-src="https://picsum.photos/id/1074/1200/800">
+              <img src="https://picsum.photos/id/1074/200/200" alt="Lion">
+          </div>
+        </div>
+
+        <div id="editor-wrapper"></div>
+      </div>
+    </section>
+
+    <section class="features">
+      <div class="feature-card">
+          <div class="feature-icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10"/>
+                  <line x1="14.31" y1="8" x2="20.05" y2="17.94"/>
+                  <line x1="9.69" y1="8" x2="21.17" y2="8"/>
+                  <line x1="7.38" y1="12" x2="13.12" y2="2.06"/>
+                  <line x1="9.69" y1="16" x2="3.95" y2="6.06"/>
+                  <line x1="14.31" y1="16" x2="2.83" y2="16"/>
+                  <line x1="16.62" y1="12" x2="10.88" y2="21.94"/>
+              </svg>
+          </div>
+          <h3>Filters & Presets</h3>
+          <p>Expertly crafted color grading presets including Vintage, Noir, and Vivid to enhance photography instantly.</p>
+      </div>
+
+      <div class="feature-card">
+          <div class="feature-icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+                  <polyline points="2 17 12 22 22 17"></polyline>
+                  <polyline points="2 12 12 17 22 12"></polyline>
+              </svg>
+          </div>
+          <h3>Layer System</h3>
+          <p>Full non-destructive layer architecture. Stack text, shapes, and images with blend modes and opacity controls.</p>
+      </div>
+
+      <div class="feature-card">
+          <div class="feature-icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                  <line x1="3" y1="9" x2="21" y2="9"></line>
+                  <line x1="9" y1="21" x2="9" y2="9"></line>
+              </svg>
+          </div>
+          <h3>Modular UI</h3>
+          <p>Drop-in UI component that works with any framework. toggle features, customize theme, and adapt to your brand.</p>
+      </div>
+
+      <div class="feature-card">
+          <div class="feature-icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M12 2a10 10 0 1 0 10 10 9 9 0 0 0-9-10"></path>
+                  <path d="M12 12l4-4"></path>
+                  <path d="M12 12l-4-4"></path>
+              </svg>
+          </div>
+          <h3>Framework Agnostic</h3>
+          <p>Built with vanilla TypeScript. Zero dependencies. Works perfectly with React, Vue, Svelte, or standard HTML.</p>
+      </div>
+    </section>
+  </main>
+
+  <script type="module">
+    import { createEditorUI } from './src/index.ts';
+
+    const EDITOR_CONTAINER = document.getElementById('editor-wrapper');
+    const SAMPLE_THUMBS = document.querySelectorAll('.sample-thumb');
+
+    const editorUI = createEditorUI({
+      container: EDITOR_CONTAINER,
+      image: 'https://picsum.photos/id/1015/1200/800',
+      theme: 'dark',
+      showHeader: true,
+      showPanel: true,
+      onExport: handleExport
+    });
+
+    SAMPLE_THUMBS.forEach(thumb => {
+        thumb.addEventListener('click', async () => {
+            SAMPLE_THUMBS.forEach(t => t.classList.remove('active'));
+            thumb.classList.add('active');
+
+            const newSrc = thumb.dataset.src;
+            if (newSrc) {
+                try {
+                    await editorUI.loadImage(newSrc);
+                } catch (err) {
+                    console.error("Failed to load image:", err);
+                }
+            }
+        });
+    });
+
+    function handleExport(blob) {
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `brighten-export-${Date.now()}.png`;
+        link.click();
+        URL.revokeObjectURL(url);
+    }
+  </script>
+</body>
+</html>
