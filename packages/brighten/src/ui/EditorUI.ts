@@ -57,6 +57,12 @@ export class EditorUI {
   } = { active: false, startX: 0, startY: 0, startPanX: 0, startPanY: 0 };
   private panMouseMoveHandler: ((e: MouseEvent) => void) | null = null;
   private panMouseUpHandler: ((e: MouseEvent) => void) | null = null;
+  private inpaintMode = false;
+  private maskCanvas: HTMLCanvasElement | null = null;
+  private maskCtx: CanvasRenderingContext2D | null = null;
+  private maskOverlay: HTMLDivElement | null = null;
+  private inpaintDrawState: { drawing: boolean; lastX: number; lastY: number } = { drawing: false, lastX: 0, lastY: 0 };
+  private inpaintBrushSize = 30;
 
   constructor(config: EditorUIConfig) {
     this.config = {
@@ -481,10 +487,30 @@ export class EditorUI {
             <button class="brighten-btn" data-action="colorize" style="width: 100%;">
               <span style="${iconStyle}">${icons.palette}</span> Colorize
             </button>
+            <button class="brighten-btn" data-action="start-inpaint" style="width: 100%;">
+              <span style="${iconStyle}">${icons.eraser}</span> Remove Objects
+            </button>
           </div>
+          ${this.inpaintMode ? `
+          <div style="margin-top: 12px; padding: 12px; background: var(--brighten-bg); border-radius: 6px;">
+            <div style="font-size: 12px; color: var(--brighten-text-secondary); margin-bottom: 8px;">Paint over objects to remove</div>
+            <div class="brighten-slider-group" style="margin-bottom: 12px;">
+              <div class="brighten-slider-label">
+                <span>Brush Size</span>
+                <span data-value="inpaintBrush">${this.inpaintBrushSize}</span>
+              </div>
+              <input type="range" class="brighten-slider" data-inpaint="brushSize" min="5" max="100" value="${this.inpaintBrushSize}">
+            </div>
+            <div style="display: flex; gap: 8px;">
+              <button class="brighten-btn" data-action="cancel-inpaint" style="flex: 1;">Cancel</button>
+              <button class="brighten-btn brighten-btn-primary" data-action="apply-inpaint" style="flex: 1;">Remove</button>
+            </div>
+          </div>
+          ` : `
           <div style="margin-top: 12px; font-size: 12px; color: var(--brighten-text-secondary);">
             Use AI to enhance your images automatically.
           </div>
+          `}
         ` : `
           <div style="padding: 16px; background: var(--brighten-bg-tertiary); border-radius: 6px; text-align: center;">
             <div style="font-size: 14px; color: var(--brighten-text-secondary); margin-bottom: 8px;">
@@ -806,6 +832,15 @@ export class EditorUI {
         case 'colorize':
           this.colorize();
           break;
+        case 'start-inpaint':
+          this.startInpaintMode();
+          break;
+        case 'cancel-inpaint':
+          this.cancelInpaintMode();
+          break;
+        case 'apply-inpaint':
+          this.applyInpaint();
+          break;
       }
     }
 
@@ -847,6 +882,13 @@ export class EditorUI {
         if (valueEl) valueEl.textContent = `${this.brushOptions.opacity}%`;
       }
       this.refreshBrushPreview();
+    }
+
+    const inpaint = target.dataset.inpaint;
+    if (inpaint === 'brushSize') {
+      this.inpaintBrushSize = parseInt(target.value, 10);
+      const valueEl = this.root.querySelector('[data-value="inpaintBrush"]');
+      if (valueEl) valueEl.textContent = String(this.inpaintBrushSize);
     }
   }
 
@@ -1564,6 +1606,378 @@ export class EditorUI {
       console.error('Colorize failed:', error);
       resetButton();
       alert(error instanceof Error ? error.message : 'Colorize failed');
+    }
+  }
+
+  private startInpaintMode(): void {
+    const layers = this.editor.getLayerManager().getLayers();
+    const imageLayer = layers.find(l => l.type === 'image');
+    if (!imageLayer || imageLayer.type !== 'image') return;
+
+    this.inpaintMode = true;
+    
+    const source = imageLayer.source;
+    const width = source instanceof HTMLImageElement ? source.naturalWidth : source.width;
+    const height = source instanceof HTMLImageElement ? source.naturalHeight : source.height;
+
+    this.maskCanvas = document.createElement('canvas');
+    this.maskCanvas.width = width;
+    this.maskCanvas.height = height;
+    this.maskCtx = this.maskCanvas.getContext('2d')!;
+    this.maskCtx.fillStyle = 'black';
+    this.maskCtx.fillRect(0, 0, width, height);
+
+    const canvasContainer = this.root.querySelector('.brighten-canvas-container') as HTMLElement;
+    if (!canvasContainer) return;
+
+    this.maskOverlay = document.createElement('div');
+    this.maskOverlay.className = 'brighten-mask-overlay';
+    this.maskOverlay.style.cssText = 'position: absolute; top: 0; left: 0; width: 100%; height: 100%; cursor: none; z-index: 100;';
+    
+    const overlayCanvas = document.createElement('canvas');
+    overlayCanvas.style.cssText = 'position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none;';
+    
+    const shimmerCanvas = document.createElement('canvas');
+    shimmerCanvas.style.cssText = 'position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none;';
+    
+    const cursorCanvas = document.createElement('canvas');
+    cursorCanvas.style.cssText = 'position: absolute; pointer-events: none; display: none;';
+    
+    this.maskOverlay.appendChild(overlayCanvas);
+    this.maskOverlay.appendChild(shimmerCanvas);
+    this.maskOverlay.appendChild(cursorCanvas);
+    canvasContainer.appendChild(this.maskOverlay);
+
+    this.setupInpaintDrawing(overlayCanvas, shimmerCanvas, cursorCanvas);
+    this.showPanel('ai');
+  }
+
+  private setupInpaintDrawing(overlayCanvas: HTMLCanvasElement, shimmerCanvas: HTMLCanvasElement, cursorCanvas: HTMLCanvasElement): void {
+    if (!this.maskOverlay || !this.maskCanvas || !this.maskCtx) return;
+
+    interface StrokePoint {
+      x: number;
+      y: number;
+      radius: number;
+      timestamp: number;
+    }
+    
+    const strokes: StrokePoint[] = [];
+    let animationId: number | null = null;
+    let isDrawing = false;
+    let idleStartTime: number | null = null;
+    
+    const AGING_DURATION = 2000;
+    const GRAY_COLOR = { r: 200, g: 200, b: 210 };
+    
+    const hslToRgb = (h: number, s: number, l: number) => {
+      s /= 100;
+      l /= 100;
+      const k = (n: number) => (n + h / 30) % 12;
+      const a = s * Math.min(l, 1 - l);
+      const f = (n: number) => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
+      return { r: Math.round(255 * f(0)), g: Math.round(255 * f(8)), b: Math.round(255 * f(4)) };
+    };
+    
+    const animate = () => {
+      if (!this.inpaintMode) return;
+      
+      const rect = this.maskOverlay!.getBoundingClientRect();
+      if (overlayCanvas.width !== rect.width || overlayCanvas.height !== rect.height) {
+        overlayCanvas.width = rect.width;
+        overlayCanvas.height = rect.height;
+        shimmerCanvas.width = rect.width;
+        shimmerCanvas.height = rect.height;
+      }
+      
+      const ctx = overlayCanvas.getContext('2d')!;
+      const shimmerCtx = shimmerCanvas.getContext('2d')!;
+      ctx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+      shimmerCtx.clearRect(0, 0, shimmerCanvas.width, shimmerCanvas.height);
+      
+      const now = Date.now();
+      const scaleX = overlayCanvas.width / this.maskCanvas!.width;
+      const scaleY = overlayCanvas.height / this.maskCanvas!.height;
+      
+      if (strokes.length > 0) {
+        ctx.save();
+        ctx.beginPath();
+        for (const stroke of strokes) {
+          ctx.moveTo(stroke.x * scaleX + stroke.radius * scaleX, stroke.y * scaleY);
+          ctx.arc(stroke.x * scaleX, stroke.y * scaleY, stroke.radius * scaleX, 0, Math.PI * 2);
+        }
+        ctx.clip();
+        
+        const avgAge = strokes.reduce((sum, s) => sum + (now - s.timestamp), 0) / strokes.length;
+        const ageRatio = Math.min(avgAge / AGING_DURATION, 1);
+        const hue = (ageRatio * 300) % 360;
+        const saturation = 90 - ageRatio * 50;
+        const lightness = 60 + ageRatio * 25;
+        
+        let r: number, g: number, b: number;
+        if (ageRatio >= 1) {
+          r = GRAY_COLOR.r;
+          g = GRAY_COLOR.g;
+          b = GRAY_COLOR.b;
+        } else {
+          const rgb = hslToRgb(hue, saturation, lightness);
+          const grayBlend = Math.pow(ageRatio, 2);
+          r = Math.round(rgb.r * (1 - grayBlend) + GRAY_COLOR.r * grayBlend);
+          g = Math.round(rgb.g * (1 - grayBlend) + GRAY_COLOR.g * grayBlend);
+          b = Math.round(rgb.b * (1 - grayBlend) + GRAY_COLOR.b * grayBlend);
+        }
+        
+        ctx.fillStyle = `rgba(${r}, ${g}, ${b}, 0.4)`;
+        ctx.fillRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+        ctx.restore();
+      }
+      
+      if (!isDrawing && strokes.length > 0) {
+        if (idleStartTime === null) idleStartTime = now;
+        const idleTime = now - idleStartTime;
+        const shimmerHue = (idleTime * 0.1) % 360;
+        const shimmerAlpha = 0.12 + Math.sin(idleTime * 0.005) * 0.08;
+        
+        const maskData = this.maskCtx!.getImageData(0, 0, this.maskCanvas!.width, this.maskCanvas!.height);
+        const shimmerData = shimmerCtx.createImageData(shimmerCanvas.width, shimmerCanvas.height);
+        
+        for (let y = 0; y < shimmerCanvas.height; y++) {
+          for (let x = 0; x < shimmerCanvas.width; x++) {
+            const maskX = Math.floor(x / scaleX);
+            const maskY = Math.floor(y / scaleY);
+            const maskIdx = (maskY * this.maskCanvas!.width + maskX) * 4;
+            
+            if (maskData.data[maskIdx] > 128) {
+              const localHue = (shimmerHue + x * 0.5 + y * 0.3) % 360;
+              const rgb = hslToRgb(localHue, 70, 85);
+              const idx = (y * shimmerCanvas.width + x) * 4;
+              shimmerData.data[idx] = rgb.r;
+              shimmerData.data[idx + 1] = rgb.g;
+              shimmerData.data[idx + 2] = rgb.b;
+              shimmerData.data[idx + 3] = Math.round(shimmerAlpha * 255);
+            }
+          }
+        }
+        shimmerCtx.putImageData(shimmerData, 0, 0);
+      } else {
+        idleStartTime = null;
+      }
+      
+      animationId = requestAnimationFrame(animate);
+    };
+
+    animate();
+
+    const getCanvasCoords = (e: MouseEvent) => {
+      const rect = this.maskOverlay!.getBoundingClientRect();
+      const x = (e.clientX - rect.left) / rect.width * this.maskCanvas!.width;
+      const y = (e.clientY - rect.top) / rect.height * this.maskCanvas!.height;
+      return { x, y };
+    };
+
+    const addStrokePoints = (fromX: number, fromY: number, toX: number, toY: number) => {
+      const dist = Math.sqrt((toX - fromX) ** 2 + (toY - fromY) ** 2);
+      const steps = Math.max(1, Math.floor(dist / 3));
+      const now = Date.now();
+      
+      for (let i = 0; i <= steps; i++) {
+        const t = i / steps;
+        strokes.push({
+          x: fromX + (toX - fromX) * t,
+          y: fromY + (toY - fromY) * t,
+          radius: this.inpaintBrushSize / 2,
+          timestamp: now + i * 5,
+        });
+      }
+      
+      this.maskCtx!.strokeStyle = 'white';
+      this.maskCtx!.lineWidth = this.inpaintBrushSize;
+      this.maskCtx!.lineCap = 'round';
+      this.maskCtx!.lineJoin = 'round';
+      this.maskCtx!.beginPath();
+      this.maskCtx!.moveTo(fromX, fromY);
+      this.maskCtx!.lineTo(toX, toY);
+      this.maskCtx!.stroke();
+    };
+
+    const addDot = (x: number, y: number) => {
+      strokes.push({ x, y, radius: this.inpaintBrushSize / 2, timestamp: Date.now() });
+      
+      this.maskCtx!.fillStyle = 'white';
+      this.maskCtx!.beginPath();
+      this.maskCtx!.arc(x, y, this.inpaintBrushSize / 2, 0, Math.PI * 2);
+      this.maskCtx!.fill();
+    };
+
+    const draw = (e: MouseEvent) => {
+      if (!this.inpaintDrawState.drawing || !this.maskCtx) return;
+      const { x, y } = getCanvasCoords(e);
+      addStrokePoints(this.inpaintDrawState.lastX, this.inpaintDrawState.lastY, x, y);
+      this.inpaintDrawState.lastX = x;
+      this.inpaintDrawState.lastY = y;
+    };
+
+    this.maskOverlay.addEventListener('mousedown', (e: MouseEvent) => {
+      const { x, y } = getCanvasCoords(e);
+      this.inpaintDrawState = { drawing: true, lastX: x, lastY: y };
+      isDrawing = true;
+      addDot(x, y);
+    });
+
+    const updateCursorPreview = (e: MouseEvent) => {
+      const rect = this.maskOverlay!.getBoundingClientRect();
+      const scaleX = rect.width / this.maskCanvas!.width;
+      const displaySize = this.inpaintBrushSize * scaleX;
+      const padding = 4;
+      const canvasSize = displaySize + padding * 2;
+      
+      cursorCanvas.width = canvasSize;
+      cursorCanvas.height = canvasSize;
+      cursorCanvas.style.width = `${canvasSize}px`;
+      cursorCanvas.style.height = `${canvasSize}px`;
+      
+      const ctx = cursorCanvas.getContext('2d')!;
+      ctx.clearRect(0, 0, canvasSize, canvasSize);
+      
+      const center = canvasSize / 2;
+      const radius = displaySize / 2;
+      
+      ctx.beginPath();
+      ctx.arc(center, center, radius, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.7)';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      
+      ctx.beginPath();
+      ctx.arc(center, center, radius, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      
+      cursorCanvas.style.left = `${e.clientX - rect.left - center}px`;
+      cursorCanvas.style.top = `${e.clientY - rect.top - center}px`;
+      cursorCanvas.style.display = 'block';
+    };
+    
+    this.maskOverlay.addEventListener('mousemove', (e: MouseEvent) => {
+      draw(e);
+      updateCursorPreview(e);
+    });
+    
+    this.maskOverlay.addEventListener('mouseenter', (e: MouseEvent) => {
+      updateCursorPreview(e);
+    });
+    
+    this.maskOverlay.addEventListener('mouseup', () => {
+      this.inpaintDrawState.drawing = false;
+      isDrawing = false;
+    });
+
+    this.maskOverlay.addEventListener('mouseleave', () => {
+      this.inpaintDrawState.drawing = false;
+      isDrawing = false;
+      cursorCanvas.style.display = 'none';
+    });
+
+    const cleanup = () => {
+      if (animationId) cancelAnimationFrame(animationId);
+    };
+    
+    (this.maskOverlay as HTMLElement & { _cleanup?: () => void })._cleanup = cleanup;
+  }
+
+  private cancelInpaintMode(): void {
+    this.inpaintMode = false;
+    this.maskCanvas = null;
+    this.maskCtx = null;
+    if (this.maskOverlay) {
+      const cleanup = (this.maskOverlay as HTMLElement & { _cleanup?: () => void })._cleanup;
+      if (cleanup) cleanup();
+      this.maskOverlay.remove();
+      this.maskOverlay = null;
+    }
+    this.showPanel('ai');
+  }
+
+  private async applyInpaint(): Promise<void> {
+    if (!this.config.apiEndpoint || !this.maskCanvas) {
+      this.cancelInpaintMode();
+      return;
+    }
+
+    const layers = this.editor.getLayerManager().getLayers();
+    const imageLayer = layers.find(l => l.type === 'image');
+    if (!imageLayer || imageLayer.type !== 'image') {
+      this.cancelInpaintMode();
+      return;
+    }
+
+    const source = imageLayer.source;
+    const canvas = document.createElement('canvas');
+    canvas.width = source instanceof HTMLImageElement ? source.naturalWidth : source.width;
+    canvas.height = source instanceof HTMLImageElement ? source.naturalHeight : source.height;
+    const ctx = canvas.getContext('2d')!;
+    ctx.fillStyle = 'white';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(source, 0, 0);
+    const base64Image = canvas.toDataURL('image/jpeg', 0.95);
+    
+    const maskExport = document.createElement('canvas');
+    maskExport.width = canvas.width;
+    maskExport.height = canvas.height;
+    const maskExportCtx = maskExport.getContext('2d')!;
+    maskExportCtx.fillStyle = 'black';
+    maskExportCtx.fillRect(0, 0, maskExport.width, maskExport.height);
+    maskExportCtx.drawImage(this.maskCanvas, 0, 0, maskExport.width, maskExport.height);
+    const base64Mask = maskExport.toDataURL('image/jpeg', 0.95);
+
+    const btn = this.root.querySelector('[data-action="apply-inpaint"]') as HTMLButtonElement;
+    const cancelBtn = this.root.querySelector('[data-action="cancel-inpaint"]') as HTMLButtonElement;
+    
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = 'Processing...';
+    }
+    if (cancelBtn) cancelBtn.disabled = true;
+
+    try {
+      const response = await fetch(`${this.config.apiEndpoint}/v1/inpaint`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image: base64Image, options: { mask: base64Mask } }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to remove objects');
+      }
+
+      const result = await response.json();
+      const originalWidth = canvas.width;
+      const originalHeight = canvas.height;
+      
+      const img = new Image();
+      img.onload = () => {
+        const resizedCanvas = document.createElement('canvas');
+        resizedCanvas.width = originalWidth;
+        resizedCanvas.height = originalHeight;
+        const resizedCtx = resizedCanvas.getContext('2d')!;
+        resizedCtx.drawImage(img, 0, 0, originalWidth, originalHeight);
+        
+        this.editor.getLayerManager().updateLayer(imageLayer.id, { source: resizedCanvas });
+        this.editor.saveToHistory('Remove objects');
+        this.originalImageData = null;
+        this.cancelInpaintMode();
+      };
+      img.onerror = () => {
+        this.cancelInpaintMode();
+        alert('Failed to load processed image');
+      };
+      img.src = result.image;
+    } catch (error) {
+      console.error('Inpaint failed:', error);
+      this.cancelInpaintMode();
+      alert(error instanceof Error ? error.message : 'Remove objects failed');
     }
   }
 

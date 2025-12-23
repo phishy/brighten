@@ -11,14 +11,8 @@ import { join } from 'path';
 const ALL_OPERATIONS = [
   'background-remove',
   'unblur',
-  'upscale',
-  'face-restore',
-  'enhance',
   'colorize',
-  'denoise',
-  'style-transfer',
   'inpaint',
-  'outpaint',
 ] as const;
 
 function formatOperationName(op: string): string {
@@ -32,14 +26,8 @@ function getOperationDescription(op: string): string {
   const descriptions: Record<string, string> = {
     'background-remove': 'Remove the background from an image, leaving only the foreground subject with transparency.',
     'unblur': 'Enhance and sharpen a blurry image using AI upscaling with face enhancement.',
-    'upscale': 'Increase image resolution using AI super-resolution.',
-    'face-restore': 'Restore and enhance faces in photos using GFPGAN.',
-    'enhance': 'General image enhancement and quality improvement.',
-    'colorize': 'Add color to black and white images.',
-    'denoise': 'Remove noise and grain from images.',
-    'style-transfer': 'Apply artistic styles to images.',
-    'inpaint': 'Fill in missing or masked areas of an image.',
-    'outpaint': 'Extend an image beyond its original boundaries.',
+    'colorize': 'Add color to black and white images using DeOldify.',
+    'inpaint': 'Remove objects from an image by painting a mask over areas to fill. Requires a `mask` parameter in options (base64 image where white = areas to remove).',
   };
   return descriptions[op] || `Perform ${formatOperationName(op)} operation on an image.`;
 }

@@ -5,6 +5,7 @@ import type { ProviderConfig } from '../../config/schema.js';
 interface ModelConfig {
   version: string;
   inputKey: string;
+  maskKey?: string;
   defaultOptions?: Record<string, unknown>;
 }
 
@@ -14,6 +15,7 @@ const REPLICATE_MODELS: Record<string, ModelConfig> = {
   'unblur': { version: 'f121d640bd286e1fdc67f9799164c1d5be36ff74576ee11c803ae5b665dd46aa', inputKey: 'image', defaultOptions: { scale: 2, face_enhance: true } },
   'face-restore': { version: 'f121d640bd286e1fdc67f9799164c1d5be36ff74576ee11c803ae5b665dd46aa', inputKey: 'image', defaultOptions: { scale: 2, face_enhance: true } },
   'colorize': { version: '0da600fab0c45a66211339f1c16b71345d22f26ef5fea3dca1bb90bb5711e950', inputKey: 'input_image', defaultOptions: { model_name: 'Artistic', render_factor: 35 } },
+  'inpaint': { version: '0e3a841c913f597c1e4c321560aa69e2bc1f15c65f8c366caafc379240efd8ba', inputKey: 'image', maskKey: 'mask' },
 };
 
 export class ReplicateProvider extends BaseProvider {
@@ -24,6 +26,7 @@ export class ReplicateProvider extends BaseProvider {
     'unblur',
     'face-restore',
     'colorize',
+    'inpaint',
   ];
 
   private apiKey: string;
@@ -47,6 +50,23 @@ export class ReplicateProvider extends BaseProvider {
     const base64Image = input.image.toString('base64');
     const dataUri = `data:${input.mimeType};base64,${base64Image}`;
 
+    const modelInput: Record<string, unknown> = { 
+      [modelConfig.inputKey]: dataUri, 
+      ...modelConfig.defaultOptions, 
+    };
+
+    if (modelConfig.maskKey && input.options?.mask) {
+      modelInput[modelConfig.maskKey] = input.options.mask;
+    }
+    
+    if (input.options) {
+      for (const [key, value] of Object.entries(input.options)) {
+        if (key !== 'mask') {
+          modelInput[key] = value;
+        }
+      }
+    }
+
     const response = await fetch('https://api.replicate.com/v1/predictions', {
       method: 'POST',
       headers: {
@@ -55,7 +75,7 @@ export class ReplicateProvider extends BaseProvider {
       },
       body: JSON.stringify({
         version: modelConfig.version,
-        input: { [modelConfig.inputKey]: dataUri, ...modelConfig.defaultOptions, ...input.options },
+        input: modelInput,
       }),
     });
 

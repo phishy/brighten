@@ -206,9 +206,9 @@ Loads YAML config with environment variable interpolation (`${VAR_NAME}`). Suppo
 Routes operations to configured providers with fallback support.
 
 ### Providers (`src/providers/remote/`)
-- **ReplicateProvider** - Replicate API (background-remove, upscale, unblur, face-restore)
-- **FalProvider** - fal.ai integration
-- **RemoveBgProvider** - remove.bg API
+- **ReplicateProvider** - Replicate API (background-remove, unblur, colorize, inpaint)
+- **FalProvider** - fal.ai integration (not yet configured)
+- **RemoveBgProvider** - remove.bg API (not yet configured)
 
 ### Server (`src/server/index.ts`)
 Express server with endpoints:
@@ -267,6 +267,11 @@ npm run build --workspace=packages/brighten-api
 2. Add model config in the provider (e.g., `REPLICATE_MODELS` in `replicate.ts`)
 3. Add to `supportedOperations` array in the provider
 4. Add operation config to `config.yaml`
+5. Update `scripts/generate-openapi.ts`:
+   - Add operation to `ALL_OPERATIONS` array
+   - Add description in `getOperationDescription()`
+6. Regenerate OpenAPI spec: `npm run generate:openapi`
+7. Copy to brighten for local dev: `cp openapi.json ../brighten/public/`
 
 ## Adding a New Provider
 

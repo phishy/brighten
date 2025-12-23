@@ -162,4 +162,9 @@ export const icons = {
     <circle cx="6.5" cy="12.5" r="1.5"/>
     <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.93 0 1.5-.67 1.5-1.5 0-.39-.15-.74-.39-1.04-.23-.29-.38-.63-.38-1.04 0-.93.75-1.68 1.68-1.68H16c3.31 0 6-2.69 6-6 0-4.97-4.49-8.74-10-8.74z"/>
   </svg>`,
+
+  eraser: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M7 21h10"/>
+    <path d="M5.5 13.5L12 7l6.5 6.5a2.12 2.12 0 010 3l-3 3a2.12 2.12 0 01-3 0l-7-7a2.12 2.12 0 010-3z"/>
+  </svg>`,
 };

@@ -9,6 +9,8 @@ operations:
     provider: replicate
   colorize:
     provider: replicate
+  inpaint:
+    provider: replicate
 
 providers:
   replicate:
