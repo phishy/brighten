@@ -287,6 +287,113 @@
         background-color: #18191b !important;
     }
 
+    /* Code Snippet Section */
+    .code-section {
+      max-width: 700px;
+      margin: 0 auto 100px;
+      padding: 0 40px;
+    }
+
+    .code-section-header {
+      text-align: center;
+      margin-bottom: 24px;
+    }
+
+    .code-section-header h2 {
+      font-size: 24px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .code-section-header p {
+      color: var(--text-muted);
+      font-size: 15px;
+    }
+
+    .code-tabs {
+      display: flex;
+      gap: 0;
+      border-bottom: 1px solid var(--border);
+      justify-content: center;
+    }
+
+    .code-tab {
+      padding: 10px 20px;
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -1px;
+      transition: all 0.2s;
+      font-family: var(--font-stack);
+    }
+
+    .code-tab:hover { color: var(--text); }
+
+    .code-tab.active {
+      color: var(--text);
+      border-bottom-color: var(--primary);
+    }
+
+    .code-block {
+      background: var(--surface);
+      border-radius: 0 0 12px 12px;
+      border: 1px solid var(--border);
+      border-top: none;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .code-block pre {
+      margin: 0;
+      padding: 24px;
+      padding-right: 60px;
+      overflow-x: auto;
+      font-family: 'SF Mono', 'Fira Code', Consolas, monospace;
+      font-size: 13px;
+      line-height: 1.6;
+      color: #e2e8f0;
+    }
+
+    .copy-btn {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      background: rgba(255, 255, 255, 0.1);
+      border: none;
+      border-radius: 6px;
+      padding: 8px;
+      cursor: pointer;
+      color: var(--text-muted);
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .copy-btn:hover {
+      background: rgba(255, 255, 255, 0.15);
+      color: var(--text);
+    }
+
+    .copy-btn.copied {
+      color: #22c55e;
+    }
+
+    .code-content { display: none; }
+    .code-content.active { display: block; }
+
+    .code-block .keyword { color: #c678dd; }
+    .code-block .string { color: #98c379; }
+    .code-block .property { color: #61afef; }
+    .code-block .comment { color: #5c6370; }
+    .code-block .function { color: #61afef; }
+    .code-block .tag { color: #e06c75; }
+    .code-block .attr { color: #d19a66; }
+
     .features {
       max-width: 1200px;
       margin: 0 auto 120px;
@@ -412,6 +519,97 @@
       </div>
     </section>
 
+    <section class="code-section">
+      <div class="code-section-header">
+        <h2>Start in seconds</h2>
+        <p>Drop-in component for any framework</p>
+      </div>
+      
+      <div class="code-tabs">
+        <button class="code-tab active" data-tab="vanilla">Vanilla JS</button>
+        <button class="code-tab" data-tab="react">React</button>
+        <button class="code-tab" data-tab="vue">Vue</button>
+        <button class="code-tab" data-tab="nextjs">Next.js</button>
+      </div>
+      
+      <div class="code-block">
+        <button class="copy-btn" title="Copy to clipboard">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+          </svg>
+        </button>
+        <div class="code-content active" data-tab="vanilla">
+          <pre><span class="keyword">import</span> { <span class="function">EditorUI</span> } <span class="keyword">from</span> <span class="string">'brighten'</span>;
+
+<span class="keyword">const</span> editor = <span class="keyword">new</span> <span class="function">EditorUI</span>({
+  <span class="property">container</span>: <span class="string">'#editor'</span>,
+  <span class="property">image</span>: <span class="string">'./photo.jpg'</span>,
+  <span class="property">onExport</span>: (<span class="attr">blob</span>) => <span class="function">download</span>(blob)
+});</pre>
+        </div>
+        
+        <div class="code-content" data-tab="react">
+          <pre><span class="keyword">import</span> { <span class="function">useEffect</span>, <span class="function">useRef</span> } <span class="keyword">from</span> <span class="string">'react'</span>;
+<span class="keyword">import</span> { <span class="function">EditorUI</span> } <span class="keyword">from</span> <span class="string">'brighten'</span>;
+
+<span class="keyword">export default function</span> <span class="function">Editor</span>({ <span class="attr">src</span> }) {
+  <span class="keyword">const</span> ref = <span class="function">useRef</span>();
+  
+  <span class="function">useEffect</span>(() => {
+    <span class="keyword">const</span> editor = <span class="keyword">new</span> <span class="function">EditorUI</span>({
+      <span class="property">container</span>: ref.current,
+      <span class="property">image</span>: src
+    });
+    <span class="keyword">return</span> () => editor.<span class="function">destroy</span>();
+  }, [src]);
+
+  <span class="keyword">return</span> &lt;<span class="tag">div</span> <span class="attr">ref</span>={ref} />;
+}</pre>
+        </div>
+        
+        <div class="code-content" data-tab="vue">
+          <pre><span class="tag">&lt;script setup&gt;</span>
+<span class="keyword">import</span> { <span class="function">ref</span>, <span class="function">onMounted</span> } <span class="keyword">from</span> <span class="string">'vue'</span>;
+<span class="keyword">import</span> { <span class="function">EditorUI</span> } <span class="keyword">from</span> <span class="string">'brighten'</span>;
+
+<span class="keyword">const</span> container = <span class="function">ref</span>();
+
+<span class="function">onMounted</span>(() => {
+  <span class="keyword">new</span> <span class="function">EditorUI</span>({
+    <span class="property">container</span>: container.value,
+    <span class="property">image</span>: <span class="string">'./photo.jpg'</span>
+  });
+});
+<span class="tag">&lt;/script&gt;</span>
+
+<span class="tag">&lt;template&gt;</span>
+  &lt;<span class="tag">div</span> <span class="attr">ref</span>="container" /&gt;
+<span class="tag">&lt;/template&gt;</span></pre>
+        </div>
+        
+        <div class="code-content" data-tab="nextjs">
+          <pre><span class="string">'use client'</span>;
+<span class="keyword">import</span> { <span class="function">useEffect</span>, <span class="function">useRef</span> } <span class="keyword">from</span> <span class="string">'react'</span>;
+
+<span class="keyword">export default function</span> <span class="function">Editor</span>({ <span class="attr">src</span> }) {
+  <span class="keyword">const</span> ref = <span class="function">useRef</span>();
+
+  <span class="function">useEffect</span>(() => {
+    <span class="function">import</span>(<span class="string">'brighten'</span>).<span class="function">then</span>(({ <span class="function">EditorUI</span> }) => {
+      <span class="keyword">new</span> <span class="function">EditorUI</span>({
+        <span class="property">container</span>: ref.current,
+        <span class="property">image</span>: src
+      });
+    });
+  }, [src]);
+
+  <span class="keyword">return</span> &lt;<span class="tag">div</span> <span class="attr">ref</span>={ref} />;
+}</pre>
+        </div>
+      </div>
+    </section>
+
     <section class="features">
       <div class="feature-card">
           <div class="feature-icon">
@@ -518,6 +716,41 @@
         link.click();
         URL.revokeObjectURL(url);
     }
+
+    // Code snippet tabs
+    document.querySelectorAll('.code-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        const tabName = tab.dataset.tab;
+        
+        document.querySelectorAll('.code-tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        
+        document.querySelectorAll('.code-content').forEach(c => c.classList.remove('active'));
+        document.querySelector(`.code-content[data-tab="${tabName}"]`).classList.add('active');
+      });
+    });
+
+    // Copy to clipboard
+    document.querySelector('.copy-btn').addEventListener('click', async (e) => {
+      const btn = e.currentTarget;
+      const activeCode = document.querySelector('.code-content.active pre');
+      const text = activeCode.textContent;
+      
+      await navigator.clipboard.writeText(text);
+      
+      btn.classList.add('copied');
+      btn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polyline points="20 6 9 17 4 12"></polyline>
+      </svg>`;
+      
+      setTimeout(() => {
+        btn.classList.remove('copied');
+        btn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+        </svg>`;
+      }, 2000);
+    });
   </script>
 </body>
 </html>
