@@ -154,4 +154,12 @@ export const icons = {
   redact: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
     <path d="M4 4l16 16M4 8l16 16M4 12l16 16M4 16l12 12M4 20l8 8"/>
   </svg>`,
+
+  palette: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="13.5" cy="6.5" r="1.5"/>
+    <circle cx="17.5" cy="10.5" r="1.5"/>
+    <circle cx="8.5" cy="7.5" r="1.5"/>
+    <circle cx="6.5" cy="12.5" r="1.5"/>
+    <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.93 0 1.5-.67 1.5-1.5 0-.39-.15-.74-.39-1.04-.23-.29-.38-.63-.38-1.04 0-.93.75-1.68 1.68-1.68H16c3.31 0 6-2.69 6-6 0-4.97-4.49-8.74-10-8.74z"/>
+  </svg>`,
 };

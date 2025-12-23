@@ -13,6 +13,7 @@ const REPLICATE_MODELS: Record<string, ModelConfig> = {
   'upscale': { version: 'f121d640bd286e1fdc67f9799164c1d5be36ff74576ee11c803ae5b665dd46aa', inputKey: 'image', defaultOptions: { scale: 4 } },
   'unblur': { version: 'f121d640bd286e1fdc67f9799164c1d5be36ff74576ee11c803ae5b665dd46aa', inputKey: 'image', defaultOptions: { scale: 2, face_enhance: true } },
   'face-restore': { version: 'f121d640bd286e1fdc67f9799164c1d5be36ff74576ee11c803ae5b665dd46aa', inputKey: 'image', defaultOptions: { scale: 2, face_enhance: true } },
+  'colorize': { version: '0da600fab0c45a66211339f1c16b71345d22f26ef5fea3dca1bb90bb5711e950', inputKey: 'input_image', defaultOptions: { model_name: 'Artistic', render_factor: 35 } },
 };
 
 export class ReplicateProvider extends BaseProvider {
@@ -22,6 +23,7 @@ export class ReplicateProvider extends BaseProvider {
     'upscale', 
     'unblur',
     'face-restore',
+    'colorize',
   ];
 
   private apiKey: string;

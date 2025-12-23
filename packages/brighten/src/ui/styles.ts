@@ -140,6 +140,13 @@ export const defaultStyles = `
   min-height: 36px;
 }
 
+.brighten-btn svg {
+  width: 16px;
+  height: 16px;
+  vertical-align: middle;
+  flex-shrink: 0;
+}
+
 .brighten-tool-btn {
   display: flex;
   flex-direction: column;

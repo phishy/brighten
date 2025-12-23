@@ -34,7 +34,7 @@ export class EditorUI {
   private currentPreset: string | null = null;
   private cropRect: Rectangle | null = null;
   private cropOverlay: HTMLDivElement | null = null;
-  private brushOptions = { color: '#ff0000', size: 10, opacity: 100 };
+  private brushOptions = { color: '#60a5fa', size: 10, opacity: 100 };
   private keyboardHandler: ((e: KeyboardEvent) => void) | null = null;
   private adjustmentHistoryTimeout: ReturnType<typeof setTimeout> | null = null;
   private cropDragState: {
@@ -48,6 +48,15 @@ export class EditorUI {
   private cropMouseUpHandler: ((e: MouseEvent) => void) | null = null;
   private filterPreviewCache: Map<string, string> = new Map();
   private filterPreviewSource: string | null = null;
+  private panState: {
+    active: boolean;
+    startX: number;
+    startY: number;
+    startPanX: number;
+    startPanY: number;
+  } = { active: false, startX: 0, startY: 0, startPanX: 0, startPanY: 0 };
+  private panMouseMoveHandler: ((e: MouseEvent) => void) | null = null;
+  private panMouseUpHandler: ((e: MouseEvent) => void) | null = null;
 
   constructor(config: EditorUIConfig) {
     this.config = {
@@ -424,11 +433,11 @@ export class EditorUI {
           <div style="font-size: 12px; color: var(--brighten-text-secondary); margin-bottom: 8px;">Rotate</div>
           <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px;">
             <button class="brighten-btn" data-action="rotate-ccw" style="display: flex; align-items: center; justify-content: center; gap: 6px; padding: 10px;">
-              <span style="display: inline-block; transform: scaleX(-1);">${icons.rotate}</span>
+              <span style="display: inline-block; width: 20px; height: 20px; transform: scaleX(-1);">${icons.rotate}</span>
               90° Left
             </button>
             <button class="brighten-btn" data-action="rotate-cw" style="display: flex; align-items: center; justify-content: center; gap: 6px; padding: 10px;">
-              ${icons.rotate}
+              <span style="display: inline-block; width: 20px; height: 20px;">${icons.rotate}</span>
               90° Right
             </button>
           </div>
@@ -437,11 +446,11 @@ export class EditorUI {
           <div style="font-size: 12px; color: var(--brighten-text-secondary); margin-bottom: 8px;">Flip</div>
           <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px;">
             <button class="brighten-btn" data-action="flip-h" style="display: flex; align-items: center; justify-content: center; gap: 6px; padding: 10px;">
-              ${icons.flipH}
+              <span style="display: inline-block; width: 20px; height: 20px;">${icons.flipH}</span>
               Horizontal
             </button>
             <button class="brighten-btn" data-action="flip-v" style="display: flex; align-items: center; justify-content: center; gap: 6px; padding: 10px;">
-              ${icons.flipV}
+              <span style="display: inline-block; width: 20px; height: 20px;">${icons.flipV}</span>
               Vertical
             </button>
           </div>
@@ -468,6 +477,9 @@ export class EditorUI {
             </button>
             <button class="brighten-btn" data-action="unblur" style="width: 100%;">
               <span style="${iconStyle}">${icons.focus}</span> Unblur / Enhance
+            </button>
+            <button class="brighten-btn" data-action="colorize" style="width: 100%;">
+              <span style="${iconStyle}">${icons.palette}</span> Colorize
             </button>
           </div>
           <div style="margin-top: 12px; font-size: 12px; color: var(--brighten-text-secondary);">
@@ -589,6 +601,62 @@ export class EditorUI {
     this.editor.on('layer:remove', () => this.refreshLayersPanel());
     this.editor.on('layer:update', () => this.refreshLayersPanel());
     this.editor.on('layer:select', () => this.refreshLayersPanel());
+
+    this.setupCanvasPanning();
+  }
+
+  private setupCanvasPanning(): void {
+    const canvasContainer = this.root.querySelector('.brighten-canvas-container') as HTMLElement;
+    if (!canvasContainer) return;
+
+    canvasContainer.addEventListener('mousedown', (e: MouseEvent) => {
+      const isMiddleButton = e.button === 1;
+      const isLeftButton = e.button === 0;
+      
+      if (!isMiddleButton && !isLeftButton) return;
+      if (isLeftButton && this.currentTool !== 'select') return;
+      if (this.cropRect) return;
+
+      const currentPan = this.editor.getPan();
+      this.panState = {
+        active: true,
+        startX: e.clientX,
+        startY: e.clientY,
+        startPanX: currentPan.x,
+        startPanY: currentPan.y,
+      };
+
+      canvasContainer.style.cursor = 'grabbing';
+
+      this.panMouseMoveHandler = (moveEvent: MouseEvent) => {
+        if (!this.panState.active) return;
+        
+        const dx = moveEvent.clientX - this.panState.startX;
+        const dy = moveEvent.clientY - this.panState.startY;
+        
+        this.editor.setPan({
+          x: this.panState.startPanX + dx,
+          y: this.panState.startPanY + dy,
+        });
+      };
+
+      this.panMouseUpHandler = () => {
+        this.panState.active = false;
+        canvasContainer.style.cursor = 'grab';
+        
+        if (this.panMouseMoveHandler) {
+          document.removeEventListener('mousemove', this.panMouseMoveHandler);
+        }
+        if (this.panMouseUpHandler) {
+          document.removeEventListener('mouseup', this.panMouseUpHandler);
+        }
+      };
+
+      document.addEventListener('mousemove', this.panMouseMoveHandler);
+      document.addEventListener('mouseup', this.panMouseUpHandler);
+    });
+
+    canvasContainer.style.cursor = 'grab';
   }
 
   private handleKeyboard(e: KeyboardEvent): void {
@@ -699,6 +767,9 @@ export class EditorUI {
         case 'add-text':
           this.addText();
           break;
+        case 'add-layer':
+          this.addLayer();
+          break;
         case 'add-shape':
           if (shape) this.addShape(shape as 'rectangle' | 'ellipse' | 'line');
           break;
@@ -731,6 +802,9 @@ export class EditorUI {
           break;
         case 'unblur':
           this.unblur();
+          break;
+        case 'colorize':
+          this.colorize();
           break;
       }
     }
@@ -1421,6 +1495,78 @@ export class EditorUI {
     }
   }
 
+  private async colorize(): Promise<void> {
+    if (!this.config.apiEndpoint) {
+      console.error('API endpoint not configured');
+      return;
+    }
+
+    const layers = this.editor.getLayerManager().getLayers();
+    const imageLayer = layers.find(l => l.type === 'image');
+    if (!imageLayer || imageLayer.type !== 'image') return;
+
+    const source = imageLayer.source;
+    const canvas = document.createElement('canvas');
+    canvas.width = source instanceof HTMLImageElement ? source.naturalWidth : source.width;
+    canvas.height = source instanceof HTMLImageElement ? source.naturalHeight : source.height;
+    const ctx = canvas.getContext('2d')!;
+    ctx.drawImage(source, 0, 0);
+    const base64Image = canvas.toDataURL('image/png');
+
+    const btn = this.root.querySelector('[data-action="colorize"]') as HTMLButtonElement;
+    const resetButton = () => {
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = `${icons.palette} Colorize`;
+      }
+    };
+
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = `${icons.palette} Processing...`;
+    }
+
+    try {
+      const response = await fetch(`${this.config.apiEndpoint}/v1/colorize`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image: base64Image }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to colorize image');
+      }
+
+      const result = await response.json();
+      const originalWidth = canvas.width;
+      const originalHeight = canvas.height;
+      
+      const img = new Image();
+      img.onload = () => {
+        const resizedCanvas = document.createElement('canvas');
+        resizedCanvas.width = originalWidth;
+        resizedCanvas.height = originalHeight;
+        const resizedCtx = resizedCanvas.getContext('2d')!;
+        resizedCtx.drawImage(img, 0, 0, originalWidth, originalHeight);
+        
+        this.editor.getLayerManager().updateLayer(imageLayer.id, { source: resizedCanvas });
+        this.editor.saveToHistory('Colorize image');
+        this.originalImageData = null;
+        resetButton();
+      };
+      img.onerror = () => {
+        resetButton();
+        alert('Failed to load colorized image');
+      };
+      img.src = result.image;
+    } catch (error) {
+      console.error('Colorize failed:', error);
+      resetButton();
+      alert(error instanceof Error ? error.message : 'Colorize failed');
+    }
+  }
+
   private openFilePicker(): void {
     const input = document.createElement('input');
     input.type = 'file';
@@ -1472,6 +1618,13 @@ export class EditorUI {
     });
 
     this.editor.saveToHistory('Add text');
+    this.showPanel('layers');
+  }
+
+  private addLayer(): void {
+    const layerManager = this.editor.getLayerManager();
+    layerManager.addDrawingLayer({ name: 'New Layer' });
+    this.editor.saveToHistory('Add layer');
     this.showPanel('layers');
   }
 
