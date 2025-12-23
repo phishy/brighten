@@ -12,11 +12,12 @@ export interface EditorUIConfig {
   showHeader?: boolean;
   showSidebar?: boolean;
   showPanel?: boolean;
+  apiEndpoint?: string;
   onExport?: (blob: Blob) => void;
   onClose?: () => void;
 }
 
-type PanelType = 'filters' | 'adjust' | 'layers' | 'text' | 'shapes' | 'crop' | 'transform' | 'brush' | null;
+type PanelType = 'filters' | 'adjust' | 'layers' | 'text' | 'shapes' | 'crop' | 'transform' | 'brush' | 'ai' | null;
 
 const DEFAULT_TOOLS: ToolType[] = ['select', 'crop', 'transform', 'brush', 'text', 'shape'];
 
@@ -45,6 +46,8 @@ export class EditorUI {
   } = { active: false, handle: null, startX: 0, startY: 0, startRect: null };
   private cropMouseMoveHandler: ((e: MouseEvent) => void) | null = null;
   private cropMouseUpHandler: ((e: MouseEvent) => void) | null = null;
+  private filterPreviewCache: Map<string, string> = new Map();
+  private filterPreviewSource: string | null = null;
 
   constructor(config: EditorUIConfig) {
     this.config = {
@@ -145,6 +148,7 @@ export class EditorUI {
       { type: 'text', icon: 'text', label: 'Text', panel: 'text' },
       { type: 'shape', icon: 'shapes', label: 'Shapes', panel: 'shapes' },
       { type: 'layers', icon: 'layers', label: 'Layers', panel: 'layers' },
+      { type: 'ai', icon: 'magic', label: 'AI', panel: 'ai' },
     ];
 
     return `
@@ -166,9 +170,10 @@ export class EditorUI {
   }
 
   private renderFiltersPanel(): string {
-    const presets = this.filterEngine.getPresets();
     const byCategory = this.filterEngine.getPresetsByCategory();
-
+    this.generateFilterPreviews();
+    const nonePreview = this.filterPreviewCache.get('none') || '';
+    
     return `
       <div class="brighten-panel-header">
         <span>Filters</span>
@@ -176,7 +181,7 @@ export class EditorUI {
       <div class="brighten-panel-content">
         <div class="brighten-presets-grid" style="margin-bottom: 16px;">
           <button class="brighten-preset ${this.currentPreset === null ? 'active' : ''}" data-preset="none">
-            <div class="brighten-preset-preview" style="display: flex; align-items: center; justify-content: center; font-size: 20px;">○</div>
+            <div class="brighten-preset-preview" style="background-image: url(${nonePreview}); background-size: cover; background-position: center;"></div>
             <span class="brighten-preset-name">None</span>
           </button>
         </div>
@@ -188,12 +193,15 @@ export class EditorUI {
             <div class="brighten-presets-grid">
               ${categoryPresets
                 .map(
-                  (preset) => `
+                  (preset) => {
+                    const preview = this.filterPreviewCache.get(preset.id) || '';
+                    return `
                 <button class="brighten-preset ${this.currentPreset === preset.id ? 'active' : ''}" data-preset="${preset.id}">
-                  <div class="brighten-preset-preview"></div>
+                  <div class="brighten-preset-preview" style="background-image: url(${preview}); background-size: cover; background-position: center;"></div>
                   <span class="brighten-preset-name">${preset.name}</span>
                 </button>
-              `
+              `;
+                  }
                 )
                 .join('')}
             </div>
@@ -203,6 +211,47 @@ export class EditorUI {
           .join('')}
       </div>
     `;
+  }
+
+  private generateFilterPreviews(): void {
+    const layers = this.editor.getLayerManager().getLayers();
+    const imageLayer = layers.find(l => l.type === 'image');
+    if (!imageLayer || imageLayer.type !== 'image') return;
+
+    const source = imageLayer.source;
+    const sourceId = source instanceof HTMLImageElement ? source.src : 'canvas';
+    
+    if (this.filterPreviewSource === sourceId && this.filterPreviewCache.size > 0) {
+      return;
+    }
+
+    this.filterPreviewSource = sourceId;
+    this.filterPreviewCache.clear();
+
+    const thumbSize = 60;
+    const thumbCanvas = document.createElement('canvas');
+    const sourceWidth = source instanceof HTMLImageElement ? source.naturalWidth : source.width;
+    const sourceHeight = source instanceof HTMLImageElement ? source.naturalHeight : source.height;
+    const scale = Math.min(thumbSize / sourceWidth, thumbSize / sourceHeight);
+    thumbCanvas.width = Math.round(sourceWidth * scale);
+    thumbCanvas.height = Math.round(sourceHeight * scale);
+    const thumbCtx = thumbCanvas.getContext('2d')!;
+    thumbCtx.drawImage(source, 0, 0, thumbCanvas.width, thumbCanvas.height);
+    const thumbImageData = thumbCtx.getImageData(0, 0, thumbCanvas.width, thumbCanvas.height);
+
+    this.filterPreviewCache.set('none', thumbCanvas.toDataURL('image/jpeg', 0.7));
+
+    const presets = this.filterEngine.getPresets();
+    for (const preset of presets) {
+      const previewData = new ImageData(
+        new Uint8ClampedArray(thumbImageData.data),
+        thumbImageData.width,
+        thumbImageData.height
+      );
+      const filtered = this.filterEngine.applyPreset(previewData, preset.id);
+      thumbCtx.putImageData(filtered, 0, 0);
+      this.filterPreviewCache.set(preset.id, thumbCanvas.toDataURL('image/jpeg', 0.7));
+    }
   }
 
   private renderAdjustPanel(): string {
@@ -404,6 +453,40 @@ export class EditorUI {
     `;
   }
 
+  private renderAIPanel(): string {
+    const hasApiEndpoint = !!this.config.apiEndpoint;
+    const iconStyle = 'display: inline-block; width: 16px; height: 16px; vertical-align: middle; margin-right: 6px;';
+    return `
+      <div class="brighten-panel-header">
+        <span>AI Tools</span>
+      </div>
+      <div class="brighten-panel-content">
+        ${hasApiEndpoint ? `
+          <div style="display: flex; flex-direction: column; gap: 8px;">
+            <button class="brighten-btn" data-action="remove-background" style="width: 100%;">
+              <span style="${iconStyle}">${icons.magic}</span> Remove Background
+            </button>
+            <button class="brighten-btn" data-action="unblur" style="width: 100%;">
+              <span style="${iconStyle}">${icons.focus}</span> Unblur / Enhance
+            </button>
+          </div>
+          <div style="margin-top: 12px; font-size: 12px; color: var(--brighten-text-secondary);">
+            Use AI to enhance your images automatically.
+          </div>
+        ` : `
+          <div style="padding: 16px; background: var(--brighten-bg-tertiary); border-radius: 6px; text-align: center;">
+            <div style="font-size: 14px; color: var(--brighten-text-secondary); margin-bottom: 8px;">
+              AI features require an API endpoint
+            </div>
+            <div style="font-size: 12px; color: var(--brighten-text-secondary);">
+              Configure <code>apiEndpoint</code> in EditorUI options to enable AI tools.
+            </div>
+          </div>
+        `}
+      </div>
+    `;
+  }
+
   private renderBrushPanel(): string {
     return `
       <div class="brighten-panel-header">
@@ -472,6 +555,9 @@ export class EditorUI {
         break;
       case 'brush':
         panelEl.innerHTML = this.renderBrushPanel();
+        break;
+      case 'ai':
+        panelEl.innerHTML = this.renderAIPanel();
         break;
       default:
         panelEl.innerHTML = '';
@@ -639,6 +725,12 @@ export class EditorUI {
           break;
         case 'flip-v':
           this.flipImage('vertical');
+          break;
+        case 'remove-background':
+          this.removeBackground();
+          break;
+        case 'unblur':
+          this.unblur();
           break;
       }
     }
@@ -1194,6 +1286,141 @@ export class EditorUI {
     this.originalImageData = null;
   }
 
+  private async removeBackground(): Promise<void> {
+    if (!this.config.apiEndpoint) {
+      console.error('API endpoint not configured');
+      return;
+    }
+
+    const layers = this.editor.getLayerManager().getLayers();
+    const imageLayer = layers.find(l => l.type === 'image');
+    if (!imageLayer || imageLayer.type !== 'image') return;
+
+    const source = imageLayer.source;
+    const canvas = document.createElement('canvas');
+    canvas.width = source instanceof HTMLImageElement ? source.naturalWidth : source.width;
+    canvas.height = source instanceof HTMLImageElement ? source.naturalHeight : source.height;
+    const ctx = canvas.getContext('2d')!;
+    ctx.drawImage(source, 0, 0);
+    const base64Image = canvas.toDataURL('image/png');
+
+    const btn = this.root.querySelector('[data-action="remove-background"]') as HTMLButtonElement;
+    const resetButton = () => {
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = `${icons.magic} Remove Background`;
+      }
+    };
+
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = `${icons.magic} Processing...`;
+    }
+
+    try {
+      const response = await fetch(`${this.config.apiEndpoint}/v1/background-remove`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image: base64Image }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to remove background');
+      }
+
+      const result = await response.json();
+      
+      const img = new Image();
+      img.onload = () => {
+        this.editor.getLayerManager().updateLayer(imageLayer.id, { source: img });
+        this.editor.saveToHistory('Remove background');
+        this.originalImageData = null;
+        resetButton();
+      };
+      img.onerror = () => {
+        throw new Error('Failed to load processed image');
+      };
+      img.src = result.image;
+    } catch (error) {
+      console.error('Background removal failed:', error);
+      resetButton();
+      alert(error instanceof Error ? error.message : 'Background removal failed');
+    }
+  }
+
+  private async unblur(): Promise<void> {
+    if (!this.config.apiEndpoint) {
+      console.error('API endpoint not configured');
+      return;
+    }
+
+    const layers = this.editor.getLayerManager().getLayers();
+    const imageLayer = layers.find(l => l.type === 'image');
+    if (!imageLayer || imageLayer.type !== 'image') return;
+
+    const source = imageLayer.source;
+    const canvas = document.createElement('canvas');
+    canvas.width = source instanceof HTMLImageElement ? source.naturalWidth : source.width;
+    canvas.height = source instanceof HTMLImageElement ? source.naturalHeight : source.height;
+    const ctx = canvas.getContext('2d')!;
+    ctx.drawImage(source, 0, 0);
+    const base64Image = canvas.toDataURL('image/png');
+
+    const btn = this.root.querySelector('[data-action="unblur"]') as HTMLButtonElement;
+    const resetButton = () => {
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = `${icons.focus} Unblur / Enhance`;
+      }
+    };
+
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = `${icons.focus} Processing...`;
+    }
+
+    try {
+      const response = await fetch(`${this.config.apiEndpoint}/v1/unblur`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image: base64Image }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to unblur image');
+      }
+
+      const result = await response.json();
+      const originalWidth = canvas.width;
+      const originalHeight = canvas.height;
+      
+      const img = new Image();
+      img.onload = () => {
+        const resizedCanvas = document.createElement('canvas');
+        resizedCanvas.width = originalWidth;
+        resizedCanvas.height = originalHeight;
+        const resizedCtx = resizedCanvas.getContext('2d')!;
+        resizedCtx.drawImage(img, 0, 0, originalWidth, originalHeight);
+        
+        this.editor.getLayerManager().updateLayer(imageLayer.id, { source: resizedCanvas });
+        this.editor.saveToHistory('Unblur image');
+        this.originalImageData = null;
+        resetButton();
+      };
+      img.onerror = () => {
+        resetButton();
+        alert('Failed to load processed image');
+      };
+      img.src = result.image;
+    } catch (error) {
+      console.error('Unblur failed:', error);
+      resetButton();
+      alert(error instanceof Error ? error.message : 'Unblur failed');
+    }
+  }
+
   private openFilePicker(): void {
     const input = document.createElement('input');
     input.type = 'file';
@@ -1204,6 +1431,8 @@ export class EditorUI {
         this.resetAdjustments();
         this.originalImageData = null;
         this.currentPreset = null;
+        this.filterPreviewSource = null;
+        this.filterPreviewCache.clear();
       }
     };
     input.click();
@@ -1279,6 +1508,8 @@ export class EditorUI {
     this.resetAdjustments();
     this.originalImageData = null;
     this.currentPreset = null;
+    this.filterPreviewSource = null;
+    this.filterPreviewCache.clear();
   }
 
   getEditor(): Editor {

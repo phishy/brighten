@@ -41,10 +41,25 @@ export default defineConfig(({ mode }) => {
     build: {
       outDir: 'dist-pages',
       sourcemap: true,
+      rollupOptions: {
+        input: {
+          main: resolve(__dirname, 'index.html'),
+          docs: resolve(__dirname, 'docs.html'),
+          'api-docs': resolve(__dirname, 'api-docs.html'),
+        },
+      },
     },
     resolve: {
       alias: {
         '@': resolve(__dirname, 'src'),
+      },
+    },
+    server: {
+      proxy: {
+        '/openapi.json': {
+          target: 'http://localhost:3001',
+          changeOrigin: true,
+        },
       },
     },
   };

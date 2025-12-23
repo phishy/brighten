@@ -7,7 +7,31 @@ on:
     branches: [main]
 
 jobs:
-  test:
+  changes:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    outputs:
+      brighten: ${{ steps.filter.outputs.brighten }}
+      brighten-api: ${{ steps.filter.outputs.brighten-api }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            brighten:
+              - 'packages/brighten/**'
+              - 'package.json'
+              - 'package-lock.json'
+            brighten-api:
+              - 'packages/brighten-api/**'
+              - 'package.json'
+              - 'package-lock.json'
+
+  test-brighten:
+    name: Test Brighten SDK
+    needs: changes
+    if: ${{ needs.changes.outputs.brighten == 'true' || github.event_name == 'push' }}
     runs-on: ubuntu-latest
 
     strategy:
@@ -24,16 +48,53 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm ci
+        run: npm install
 
       - name: Type check
         run: npx tsc --noEmit
+        working-directory: packages/brighten
 
       - name: Run tests
         run: npm test -- --run
+        working-directory: packages/brighten
 
       - name: Build
         run: npm run build
+        working-directory: packages/brighten
+
+  test-brighten-api:
+    name: Test Brighten API
+    needs: changes
+    if: ${{ needs.changes.outputs.brighten-api == 'true' || github.event_name == 'push' }}
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [18, 20, 22]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Type check
+        run: npx tsc --noEmit
+        working-directory: packages/brighten-api
+
+      - name: Run tests
+        run: npm test -- --run
+        working-directory: packages/brighten-api
+
+      - name: Build
+        run: npm run build
+        working-directory: packages/brighten-api
 
   lint:
     runs-on: ubuntu-latest
@@ -48,7 +109,7 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm ci
+        run: npm install
 
       - name: Lint
         run: npm run lint

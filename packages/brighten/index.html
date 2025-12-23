@@ -32,6 +32,67 @@
       overflow-x: hidden;
     }
 
+    /* Animated gradient background */
+    .bg-gradient {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 100vh;
+      z-index: 0;
+      overflow: hidden;
+      pointer-events: none;
+    }
+
+    .bg-gradient-orb {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(100px);
+    }
+
+    .bg-gradient-orb:nth-child(1) {
+      width: 800px;
+      height: 800px;
+      background: rgba(59, 130, 246, 0.25);
+      top: -300px;
+      right: -200px;
+      animation: float1 8s ease-in-out infinite;
+    }
+
+    .bg-gradient-orb:nth-child(2) {
+      width: 600px;
+      height: 600px;
+      background: rgba(139, 92, 246, 0.2);
+      bottom: 0;
+      left: -200px;
+      animation: float2 10s ease-in-out infinite;
+    }
+
+    .bg-gradient-orb:nth-child(3) {
+      width: 500px;
+      height: 500px;
+      background: rgba(236, 72, 153, 0.15);
+      top: 30%;
+      left: 40%;
+      animation: float3 12s ease-in-out infinite;
+    }
+
+    @keyframes float1 {
+      0%, 100% { transform: translate(0, 0) scale(1); }
+      50% { transform: translate(-80px, 60px) scale(1.1); }
+    }
+
+    @keyframes float2 {
+      0%, 100% { transform: translate(0, 0) scale(1); }
+      50% { transform: translate(100px, -80px) scale(1.15); }
+    }
+
+    @keyframes float3 {
+      0%, 100% { transform: translate(0, 0) scale(1); }
+      33% { transform: translate(60px, -40px) scale(1.05); }
+      66% { transform: translate(-40px, 60px) scale(0.95); }
+    }
+
     .site-header {
       display: flex;
       justify-content: space-between;
@@ -156,7 +217,8 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      background: radial-gradient(circle at center top, rgba(59, 130, 246, 0.05) 0%, transparent 60%);
+      position: relative;
+      z-index: 1;
     }
 
     .demo-controls {
@@ -296,19 +358,24 @@
   </style>
 </head>
 <body>
+  <div class="bg-gradient">
+    <div class="bg-gradient-orb"></div>
+    <div class="bg-gradient-orb"></div>
+    <div class="bg-gradient-orb"></div>
+  </div>
 
   <header class="site-header">
     <a href="#" class="logo">
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2.5">
-        <circle cx="12" cy="12" r="10"/>
-        <path d="M12 6v6l4 2"/>
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2">
+        <circle cx="12" cy="12" r="5"/>
+        <path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/>
       </svg>
       Brighten
     </a>
     <nav class="nav-links">
-      <a href="#" class="nav-link">Documentation</a>
+      <a href="./docs.html" class="nav-link">Documentation</a>
       <a href="https://github.com/phishy/brighten" class="nav-link">GitHub</a>
-      <a href="#" class="nav-link">npm</a>
+      <a href="https://www.npmjs.com/package/brighten" class="nav-link">npm</a>
     </nav>
   </header>
 
@@ -397,6 +464,17 @@
           <h3>Framework Agnostic</h3>
           <p>Built with vanilla TypeScript. Zero dependencies. Works perfectly with React, Vue, Svelte, or standard HTML.</p>
       </div>
+
+      <div class="feature-card">
+          <div class="feature-icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 3v2M12 19v2M5.64 5.64l1.41 1.41M16.95 16.95l1.41 1.41M3 12h2M19 12h2M5.64 18.36l1.41-1.41M16.95 7.05l1.41-1.41"/>
+                  <circle cx="12" cy="12" r="4"/>
+              </svg>
+          </div>
+          <h3>AI-Powered</h3>
+          <p>Remove backgrounds and enhance images with AI. Connects to your own API backend for processing with Replicate, fal.ai, or remove.bg.</p>
+      </div>
     </section>
   </main>
 
@@ -412,6 +490,7 @@
       theme: 'dark',
       showHeader: true,
       showPanel: true,
+      apiEndpoint: import.meta.env.VITE_API_ENDPOINT || undefined,
       onExport: handleExport
     });
 

@@ -1,0 +1,29 @@
+server:
+  port: 3000
+  host: 0.0.0.0
+
+operations:
+  background-remove:
+    provider: replicate
+    fallback: removebg
+    
+  upscale:
+    provider: replicate
+    options:
+      scale: 4
+    
+  unblur:
+    provider: replicate
+    
+  face-restore:
+    provider: fal
+
+providers:
+  replicate:
+    api_key: ${REPLICATE_API_KEY}
+    
+  fal:
+    api_key: ${FAL_API_KEY}
+    
+  removebg:
+    api_key: ${REMOVEBG_API_KEY}

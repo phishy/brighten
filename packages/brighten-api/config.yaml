@@ -1,0 +1,13 @@
+server:
+  port: 3001
+  host: 0.0.0.0
+
+operations:
+  background-remove:
+    provider: replicate
+  unblur:
+    provider: replicate
+
+providers:
+  replicate:
+    api_key: ${REPLICATE_API_KEY}

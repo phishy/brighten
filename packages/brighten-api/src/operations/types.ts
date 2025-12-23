@@ -1,0 +1,36 @@
+export type OperationType = 
+  | 'background-remove'
+  | 'upscale'
+  | 'unblur'
+  | 'enhance'
+  | 'colorize'
+  | 'denoise'
+  | 'face-restore'
+  | 'style-transfer'
+  | 'inpaint'
+  | 'outpaint';
+
+export interface OperationInput {
+  image: Buffer;
+  mimeType: string;
+  options?: Record<string, unknown>;
+}
+
+export interface OperationResult {
+  image: Buffer;
+  mimeType: string;
+  metadata?: {
+    provider: string;
+    model?: string;
+    processingTime: number;
+    [key: string]: unknown;
+  };
+}
+
+export interface Operation {
+  type: OperationType;
+  name: string;
+  description: string;
+  supportedMimeTypes: string[];
+  execute(input: OperationInput): Promise<OperationResult>;
+}

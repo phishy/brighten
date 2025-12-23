@@ -1,8 +1,11 @@
-# Brighten Photo Editor SDK - Agent Guidelines
+# Brighten Monorepo - Agent Guidelines
 
 ## Project Overview
 
-Brighten is a JavaScript/TypeScript photo editor SDK that provides a drop-in component for web applications with comprehensive photo editing capabilities.
+Brighten is a photo editor ecosystem with two packages:
+
+1. **brighten** (`packages/brighten/`) - JavaScript/TypeScript photo editor SDK with drop-in UI component
+2. **brighten-api** (`packages/brighten-api/`) - Unified media processing API with configurable AI backends
 
 ## Documentation Maintenance
 
@@ -22,10 +25,26 @@ Brighten is a JavaScript/TypeScript photo editor SDK that provides a drop-in com
   - Build/test commands
   - Internal APIs that other agents need to know about
 
+## Monorepo Structure
+
+```
+brighten/
+├── packages/
+│   ├── brighten/           # Photo Editor SDK
+│   └── brighten-api/       # Media Processing API
+├── .github/workflows/      # CI/CD
+├── AGENTS.md               # This file
+└── package.json            # Workspace config
+```
+
+---
+
+# Package: brighten (Photo Editor SDK)
+
 ## Architecture
 
 ```
-src/
+packages/brighten/src/
 ├── core/           # Core engine (Editor, Canvas, Layers, History)
 ├── filters/        # Filter system with 15+ built-in filters
 ├── tools/          # Editing tools (Crop, Transform, Brush)
@@ -97,6 +116,12 @@ npm test -- --run    # Run tests
 npm run lint         # Lint code
 ```
 
+All commands can be run from the monorepo root with workspace flag:
+```bash
+npm test --workspace=packages/brighten -- --run
+npm run build --workspace=packages/brighten
+```
+
 ## Testing Requirements
 
 **IMPORTANT**: After making any code changes, you MUST run `npm test -- --run` and ensure all tests pass before considering the task complete.
@@ -142,3 +167,149 @@ const myPlugin: Plugin = {
 - Canvas operations use `willReadFrequently: true` for pixel manipulation
 - Rendering is queued via `requestAnimationFrame` to prevent thrashing
 - Consider WebGL for heavy filter operations (future enhancement)
+
+---
+
+# Package: brighten-api (Media Processing API)
+
+## Architecture
+
+```
+packages/brighten-api/src/
+├── config/           # YAML config loading with Zod validation
+│   ├── schema.ts     # Config types and Zod schemas
+│   ├── loader.ts     # Loads YAML, interpolates ${ENV_VARS}
+│   └── index.ts
+├── operations/       # Operation type definitions
+│   ├── types.ts      # OperationType, OperationInput, OperationResult
+│   └── index.ts
+├── providers/        # Backend implementations
+│   ├── base.ts       # BaseProvider abstract class
+│   ├── remote/
+│   │   ├── replicate.ts   # Replicate API integration
+│   │   ├── fal.ts         # fal.ai integration
+│   │   └── removebg.ts    # remove.bg integration
+│   └── index.ts
+├── router/           # Routes operations to providers based on config
+│   └── index.ts
+├── server/           # Express API server
+│   └── index.ts
+└── index.ts
+```
+
+## Key Components
+
+### Config Loader (`src/config/loader.ts`)
+Loads YAML config with environment variable interpolation (`${VAR_NAME}`). Supports `.env.local` via dotenv.
+
+### OperationRouter (`src/router/index.ts`)
+Routes operations to configured providers with fallback support.
+
+### Providers (`src/providers/remote/`)
+- **ReplicateProvider** - Replicate API (background-remove, upscale, unblur, face-restore)
+- **FalProvider** - fal.ai integration
+- **RemoveBgProvider** - remove.bg API
+
+### Server (`src/server/index.ts`)
+Express server with endpoints:
+- `POST /v1/:operation` - Execute an operation (e.g., `/v1/background-remove`)
+- `GET /health` - Health check
+
+## Configuration
+
+Config file: `config.yaml` (or `config.yml`)
+
+```yaml
+server:
+  port: 3001
+  host: 0.0.0.0
+
+operations:
+  background-remove:
+    provider: replicate
+    fallback: removebg
+  unblur:
+    provider: replicate
+
+providers:
+  replicate:
+    api_key: ${REPLICATE_API_KEY}
+  removebg:
+    api_key: ${REMOVEBG_API_KEY}
+```
+
+## Environment Variables
+
+Store secrets in `.env.local` (gitignored):
+```
+REPLICATE_API_KEY=r8_xxxxx
+```
+
+## Development Commands
+
+```bash
+cd packages/brighten-api
+npm run dev          # Development server with hot reload (tsx watch)
+npm run build        # Build to dist/
+npm start            # Run built server
+npm test             # Run tests
+```
+
+Or from monorepo root:
+```bash
+npm run dev --workspace=packages/brighten-api
+npm run build --workspace=packages/brighten-api
+```
+
+## Adding a New Operation
+
+1. Add operation type to `OperationType` in `src/operations/types.ts`
+2. Add model config in the provider (e.g., `REPLICATE_MODELS` in `replicate.ts`)
+3. Add to `supportedOperations` array in the provider
+4. Add operation config to `config.yaml`
+
+## Adding a New Provider
+
+1. Create new file in `src/providers/remote/`
+2. Extend `BaseProvider` class
+3. Implement `execute(operation, input)` method
+4. Export from `src/providers/index.ts`
+5. Register in `OperationRouter.initializeProviders()`
+
+## API Request/Response Format
+
+### Request
+```json
+POST /v1/background-remove
+{
+  "image": "data:image/png;base64,..."
+}
+```
+
+### Response
+```json
+{
+  "image": "data:image/png;base64,...",
+  "metadata": {
+    "provider": "replicate",
+    "model": "...",
+    "processingTime": 1234
+  }
+}
+```
+
+## Integration with brighten SDK
+
+The EditorUI component connects to brighten-api via the `apiEndpoint` config:
+
+```typescript
+const editor = createEditorUI({
+  container: '#editor',
+  apiEndpoint: 'http://localhost:3001',  // brighten-api URL
+});
+```
+
+For local development, set `VITE_API_ENDPOINT` in `packages/brighten/.env.local`:
+```
+VITE_API_ENDPOINT=http://localhost:3001
+```
