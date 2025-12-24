@@ -15,7 +15,7 @@ const REPLICATE_MODELS: Record<string, ModelConfig> = {
   'unblur': { version: 'f121d640bd286e1fdc67f9799164c1d5be36ff74576ee11c803ae5b665dd46aa', inputKey: 'image', defaultOptions: { scale: 2, face_enhance: true } },
   'face-restore': { version: 'f121d640bd286e1fdc67f9799164c1d5be36ff74576ee11c803ae5b665dd46aa', inputKey: 'image', defaultOptions: { scale: 2, face_enhance: true } },
   'colorize': { version: '0da600fab0c45a66211339f1c16b71345d22f26ef5fea3dca1bb90bb5711e950', inputKey: 'input_image', defaultOptions: { model_name: 'Artistic', render_factor: 35 } },
-  'inpaint': { version: '0e3a841c913f597c1e4c321560aa69e2bc1f15c65f8c366caafc379240efd8ba', inputKey: 'image', maskKey: 'mask' },
+  'inpaint': { version: '40e67426e1bf78199d78b36580389fbbdcb4c9cdc2bc2b489e99d713f167b3c5', inputKey: 'image', maskKey: 'mask' },
 };
 
 export class ReplicateProvider extends BaseProvider {
@@ -57,6 +57,9 @@ export class ReplicateProvider extends BaseProvider {
 
     if (modelConfig.maskKey && input.options?.mask) {
       modelInput[modelConfig.maskKey] = input.options.mask;
+      console.log('[DEBUG] Mask provided, length:', (input.options.mask as string).length);
+    } else if (modelConfig.maskKey) {
+      console.log('[DEBUG] Mask key expected but no mask provided in options:', Object.keys(input.options || {}));
     }
     
     if (input.options) {
@@ -67,6 +70,7 @@ export class ReplicateProvider extends BaseProvider {
       }
     }
 
+    console.log('[DEBUG] Model input keys:', Object.keys(modelInput));
     const response = await fetch('https://api.replicate.com/v1/predictions', {
       method: 'POST',
       headers: {

@@ -838,6 +838,7 @@ export class EditorUI {
         case 'cancel-inpaint':
           this.cancelInpaintMode();
           break;
+
         case 'apply-inpaint':
           this.applyInpaint();
           break;
@@ -1630,9 +1631,14 @@ export class EditorUI {
     const canvasContainer = this.root.querySelector('.brighten-canvas-container') as HTMLElement;
     if (!canvasContainer) return;
 
+    const zoom = this.editor.getZoom();
+    const pan = this.editor.getPan();
+    const imageDisplayWidth = width * zoom;
+    const imageDisplayHeight = height * zoom;
+    
     this.maskOverlay = document.createElement('div');
     this.maskOverlay.className = 'brighten-mask-overlay';
-    this.maskOverlay.style.cssText = 'position: absolute; top: 0; left: 0; width: 100%; height: 100%; cursor: none; z-index: 100;';
+    this.maskOverlay.style.cssText = `position: absolute; left: ${pan.x}px; top: ${pan.y}px; width: ${imageDisplayWidth}px; height: ${imageDisplayHeight}px; cursor: none; z-index: 100;`;
     
     const overlayCanvas = document.createElement('canvas');
     overlayCanvas.style.cssText = 'position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none;';
@@ -1770,28 +1776,31 @@ export class EditorUI {
 
     const getCanvasCoords = (e: MouseEvent) => {
       const rect = this.maskOverlay!.getBoundingClientRect();
-      const x = (e.clientX - rect.left) / rect.width * this.maskCanvas!.width;
-      const y = (e.clientY - rect.top) / rect.height * this.maskCanvas!.height;
-      return { x, y };
+      const scaleX = this.maskCanvas!.width / rect.width;
+      const scaleY = this.maskCanvas!.height / rect.height;
+      const x = (e.clientX - rect.left) * scaleX;
+      const y = (e.clientY - rect.top) * scaleY;
+      return { x, y, scaleX, scaleY };
     };
 
-    const addStrokePoints = (fromX: number, fromY: number, toX: number, toY: number) => {
+    const addStrokePoints = (fromX: number, fromY: number, toX: number, toY: number, scale: number) => {
       const dist = Math.sqrt((toX - fromX) ** 2 + (toY - fromY) ** 2);
       const steps = Math.max(1, Math.floor(dist / 3));
       const now = Date.now();
+      const scaledBrushSize = this.inpaintBrushSize * scale;
       
       for (let i = 0; i <= steps; i++) {
         const t = i / steps;
         strokes.push({
           x: fromX + (toX - fromX) * t,
           y: fromY + (toY - fromY) * t,
-          radius: this.inpaintBrushSize / 2,
+          radius: scaledBrushSize / 2,
           timestamp: now + i * 5,
         });
       }
       
       this.maskCtx!.strokeStyle = 'white';
-      this.maskCtx!.lineWidth = this.inpaintBrushSize;
+      this.maskCtx!.lineWidth = scaledBrushSize;
       this.maskCtx!.lineCap = 'round';
       this.maskCtx!.lineJoin = 'round';
       this.maskCtx!.beginPath();
@@ -1800,28 +1809,29 @@ export class EditorUI {
       this.maskCtx!.stroke();
     };
 
-    const addDot = (x: number, y: number) => {
-      strokes.push({ x, y, radius: this.inpaintBrushSize / 2, timestamp: Date.now() });
+    const addDot = (x: number, y: number, scale: number) => {
+      const scaledBrushSize = this.inpaintBrushSize * scale;
+      strokes.push({ x, y, radius: scaledBrushSize / 2, timestamp: Date.now() });
       
       this.maskCtx!.fillStyle = 'white';
       this.maskCtx!.beginPath();
-      this.maskCtx!.arc(x, y, this.inpaintBrushSize / 2, 0, Math.PI * 2);
+      this.maskCtx!.arc(x, y, scaledBrushSize / 2, 0, Math.PI * 2);
       this.maskCtx!.fill();
     };
 
     const draw = (e: MouseEvent) => {
       if (!this.inpaintDrawState.drawing || !this.maskCtx) return;
-      const { x, y } = getCanvasCoords(e);
-      addStrokePoints(this.inpaintDrawState.lastX, this.inpaintDrawState.lastY, x, y);
+      const { x, y, scaleX } = getCanvasCoords(e);
+      addStrokePoints(this.inpaintDrawState.lastX, this.inpaintDrawState.lastY, x, y, scaleX);
       this.inpaintDrawState.lastX = x;
       this.inpaintDrawState.lastY = y;
     };
 
     this.maskOverlay.addEventListener('mousedown', (e: MouseEvent) => {
-      const { x, y } = getCanvasCoords(e);
+      const { x, y, scaleX } = getCanvasCoords(e);
       this.inpaintDrawState = { drawing: true, lastX: x, lastY: y };
       isDrawing = true;
-      addDot(x, y);
+      addDot(x, y, scaleX);
     });
 
     const updateCursorPreview = (e: MouseEvent) => {
@@ -1929,8 +1939,8 @@ export class EditorUI {
     maskExportCtx.fillStyle = 'black';
     maskExportCtx.fillRect(0, 0, maskExport.width, maskExport.height);
     maskExportCtx.drawImage(this.maskCanvas, 0, 0, maskExport.width, maskExport.height);
-    const base64Mask = maskExport.toDataURL('image/jpeg', 0.95);
-
+    const base64Mask = maskExport.toDataURL('image/jpeg', 1.0);
+    
     const btn = this.root.querySelector('[data-action="apply-inpaint"]') as HTMLButtonElement;
     const cancelBtn = this.root.querySelector('[data-action="cancel-inpaint"]') as HTMLButtonElement;
     
