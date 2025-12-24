@@ -685,6 +685,13 @@ export class EditorUI {
     });
 
     canvasContainer.style.cursor = 'grab';
+
+    canvasContainer.addEventListener('wheel', (e: WheelEvent) => {
+      e.preventDefault();
+      const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
+      const currentZoom = this.editor.getZoom();
+      this.editor.setZoom(currentZoom * zoomFactor);
+    }, { passive: false });
   }
 
   private handleKeyboard(e: KeyboardEvent): void {
@@ -900,6 +907,11 @@ export class EditorUI {
   }
 
   private setTool(tool: ToolType): void {
+    if (this.currentTool === 'crop' && tool !== 'crop') {
+      this.removeCropOverlay();
+      this.cropRect = null;
+    }
+    
     this.currentTool = tool;
     this.editor.setTool(tool);
 
