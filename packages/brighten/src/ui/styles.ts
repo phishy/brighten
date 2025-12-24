@@ -422,6 +422,46 @@ export const defaultStyles = `
 @keyframes brighten-spin {
   to { transform: rotate(360deg); }
 }
+
+@keyframes brighten-ai-glow-rotate {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.brighten-ai-border {
+  position: absolute;
+  inset: -4px;
+  z-index: 200;
+  pointer-events: none;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.brighten-ai-border::before {
+  content: '';
+  position: absolute;
+  inset: -50%;
+  background: conic-gradient(
+    from 0deg,
+    #BC82F3,
+    #F5B9EA,
+    #8D9FFF,
+    #AA6EEE,
+    #FF6778,
+    #FFBA71,
+    #C686FF,
+    #BC82F3
+  );
+  animation: brighten-ai-glow-rotate 2s linear infinite;
+}
+
+.brighten-ai-border::after {
+  content: '';
+  position: absolute;
+  inset: 4px;
+  background: var(--brighten-bg);
+  border-radius: 4px;
+}
 `;
 
 export function injectStyles(): void {

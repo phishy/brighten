@@ -123,6 +123,12 @@ export const icons = {
     <circle cx="12" cy="12" r="4"/>
   </svg>`,
 
+  sparkles: `<svg viewBox="0 0 24 24" fill="currentColor">
+    <path d="M9.5 2l1.5 4.5L15.5 8l-4.5 1.5L9.5 14l-1.5-4.5L3.5 8l4.5-1.5L9.5 2z"/>
+    <path d="M18 12l1 3 3 1-3 1-1 3-1-3-3-1 3-1 1-3z"/>
+    <path d="M6 16l.75 2.25L9 19l-2.25.75L6 22l-.75-2.25L3 19l2.25-.75L6 16z"/>
+  </svg>`,
+
   image: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
     <rect x="3" y="3" width="18" height="18" rx="2"/>
     <circle cx="8.5" cy="8.5" r="1.5"/>

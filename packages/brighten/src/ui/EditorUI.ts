@@ -154,8 +154,8 @@ export class EditorUI {
 
   private renderSidebar(): string {
     const tools = [
-      { type: 'ai', icon: 'magic', label: 'AI', panel: 'ai' },
       { type: 'select', icon: 'select', label: 'Select' },
+      { type: 'ai', icon: 'sparkles', label: 'AI', panel: 'ai' },
       { type: 'crop', icon: 'crop', label: 'Crop', panel: 'crop' },
       { type: 'transform', icon: 'transform', label: 'Transform', panel: 'transform' },
       { type: 'filter', icon: 'filter', label: 'Filters', panel: 'filters' },
@@ -478,16 +478,16 @@ export class EditorUI {
       <div class="brighten-panel-content">
         ${hasApiEndpoint ? `
           <div style="display: flex; flex-direction: column; gap: 8px;">
-            <button class="brighten-btn" data-action="remove-background" style="width: 100%;">
+            <button class="brighten-btn" data-action="remove-background" style="width: 100%; justify-content: flex-start;">
               <span style="${iconStyle}">${icons.magic}</span> Remove Background
             </button>
-            <button class="brighten-btn" data-action="unblur" style="width: 100%;">
+            <button class="brighten-btn" data-action="unblur" style="width: 100%; justify-content: flex-start;">
               <span style="${iconStyle}">${icons.focus}</span> Unblur / Enhance
             </button>
-            <button class="brighten-btn" data-action="colorize" style="width: 100%;">
+            <button class="brighten-btn" data-action="colorize" style="width: 100%; justify-content: flex-start;">
               <span style="${iconStyle}">${icons.palette}</span> Colorize
             </button>
-            <button class="brighten-btn" data-action="start-inpaint" style="width: 100%;">
+            <button class="brighten-btn" data-action="start-inpaint" style="width: 100%; justify-content: flex-start;">
               <span style="${iconStyle}">${icons.eraser}</span> Remove Objects
             </button>
           </div>
@@ -1403,6 +1403,22 @@ export class EditorUI {
     this.originalImageData = null;
   }
 
+  private aiGlowElement: HTMLElement | null = null;
+
+  private setAiProcessing(active: boolean): void {
+    const canvasContainer = this.root.querySelector('.brighten-canvas-container');
+    if (!canvasContainer) return;
+
+    if (active && !this.aiGlowElement) {
+      this.aiGlowElement = document.createElement('div');
+      this.aiGlowElement.className = 'brighten-ai-border';
+      canvasContainer.appendChild(this.aiGlowElement);
+    } else if (!active && this.aiGlowElement) {
+      this.aiGlowElement.remove();
+      this.aiGlowElement = null;
+    }
+  }
+
   private async removeBackground(): Promise<void> {
     if (!this.config.apiEndpoint) {
       console.error('API endpoint not configured');
@@ -1423,12 +1439,14 @@ export class EditorUI {
 
     const btn = this.root.querySelector('[data-action="remove-background"]') as HTMLButtonElement;
     const resetButton = () => {
+      this.setAiProcessing(false);
       if (btn) {
         btn.disabled = false;
         btn.innerHTML = `${icons.magic} Remove Background`;
       }
     };
 
+    this.setAiProcessing(true);
     if (btn) {
       btn.disabled = true;
       btn.innerHTML = `${icons.magic} Processing...`;
@@ -1486,12 +1504,14 @@ export class EditorUI {
 
     const btn = this.root.querySelector('[data-action="unblur"]') as HTMLButtonElement;
     const resetButton = () => {
+      this.setAiProcessing(false);
       if (btn) {
         btn.disabled = false;
         btn.innerHTML = `${icons.focus} Unblur / Enhance`;
       }
     };
 
+    this.setAiProcessing(true);
     if (btn) {
       btn.disabled = true;
       btn.innerHTML = `${icons.focus} Processing...`;
@@ -1558,12 +1578,14 @@ export class EditorUI {
 
     const btn = this.root.querySelector('[data-action="colorize"]') as HTMLButtonElement;
     const resetButton = () => {
+      this.setAiProcessing(false);
       if (btn) {
         btn.disabled = false;
         btn.innerHTML = `${icons.palette} Colorize`;
       }
     };
 
+    this.setAiProcessing(true);
     if (btn) {
       btn.disabled = true;
       btn.innerHTML = `${icons.palette} Processing...`;
@@ -1944,6 +1966,7 @@ export class EditorUI {
     const btn = this.root.querySelector('[data-action="apply-inpaint"]') as HTMLButtonElement;
     const cancelBtn = this.root.querySelector('[data-action="cancel-inpaint"]') as HTMLButtonElement;
     
+    this.setAiProcessing(true);
     if (btn) {
       btn.disabled = true;
       btn.textContent = 'Processing...';
@@ -1977,15 +2000,18 @@ export class EditorUI {
         this.editor.getLayerManager().updateLayer(imageLayer.id, { source: resizedCanvas });
         this.editor.saveToHistory('Remove objects');
         this.originalImageData = null;
+        this.setAiProcessing(false);
         this.cancelInpaintMode();
       };
       img.onerror = () => {
+        this.setAiProcessing(false);
         this.cancelInpaintMode();
         alert('Failed to load processed image');
       };
       img.src = result.image;
     } catch (error) {
       console.error('Inpaint failed:', error);
+      this.setAiProcessing(false);
       this.cancelInpaintMode();
       alert(error instanceof Error ? error.message : 'Remove objects failed');
     }
