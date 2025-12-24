@@ -154,6 +154,7 @@ export class EditorUI {
 
   private renderSidebar(): string {
     const tools = [
+      { type: 'ai', icon: 'magic', label: 'AI', panel: 'ai' },
       { type: 'select', icon: 'select', label: 'Select' },
       { type: 'crop', icon: 'crop', label: 'Crop', panel: 'crop' },
       { type: 'transform', icon: 'transform', label: 'Transform', panel: 'transform' },
@@ -163,7 +164,6 @@ export class EditorUI {
       { type: 'text', icon: 'text', label: 'Text', panel: 'text' },
       { type: 'shape', icon: 'shapes', label: 'Shapes', panel: 'shapes' },
       { type: 'layers', icon: 'layers', label: 'Layers', panel: 'layers' },
-      { type: 'ai', icon: 'magic', label: 'AI', panel: 'ai' },
     ];
 
     return `
