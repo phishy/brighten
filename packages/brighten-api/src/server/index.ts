@@ -587,6 +587,175 @@ function getHomepageHtml(): string {
       .footer-inner { flex-direction: column; gap: 16px; }
       .nav-links a:not(.btn) { display: none; }
     }
+    
+    /* Signup Widget */
+    .signup-widget {
+      max-width: 440px;
+      margin: 0 auto;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 32px;
+      text-align: left;
+    }
+    
+    .signup-widget .form-group { margin-bottom: 16px; }
+    
+    .signup-widget .form-label {
+      display: block;
+      font-size: 13px;
+      font-weight: 500;
+      margin-bottom: 6px;
+      color: var(--gray-400);
+    }
+    
+    .signup-widget .form-input {
+      width: 100%;
+      padding: 12px 14px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--fg);
+      font-size: 14px;
+      transition: border-color 0.15s;
+    }
+    
+    .signup-widget .form-input:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+    
+    .signup-widget .form-input::placeholder { color: var(--gray-600); }
+    
+    .signup-widget .btn { width: 100%; margin-top: 8px; }
+    
+    .signup-widget .divider {
+      text-align: center;
+      margin: 20px 0;
+      color: var(--gray-500);
+      font-size: 13px;
+    }
+    
+    .signup-widget .toggle-link {
+      color: var(--primary);
+      cursor: pointer;
+      text-decoration: none;
+    }
+    
+    .signup-widget .toggle-link:hover { text-decoration: underline; }
+    
+    .signup-widget .error-msg {
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      color: #f87171;
+      padding: 10px 12px;
+      border-radius: 8px;
+      font-size: 13px;
+      margin-bottom: 16px;
+      display: none;
+    }
+    
+    .signup-widget .error-msg.show { display: block; }
+    
+    .signup-widget .success-state {
+      text-align: center;
+      padding: 20px 0;
+    }
+    
+    .signup-widget .success-icon {
+      width: 56px;
+      height: 56px;
+      background: rgba(34, 197, 94, 0.1);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 16px;
+      color: #22c55e;
+    }
+    
+    .signup-widget .success-state h3 {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+    
+    .signup-widget .success-state p {
+      color: var(--gray-400);
+      font-size: 14px;
+      margin-bottom: 20px;
+    }
+    
+    .api-key-display {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      margin: 16px 0;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    
+    .api-key-display code {
+      flex: 1;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: var(--fg);
+      word-break: break-all;
+    }
+    
+    .api-key-display .copy-btn {
+      padding: 6px 12px;
+      font-size: 12px;
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--fg);
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+    
+    .api-key-display .copy-btn:hover {
+      background: rgba(255,255,255,0.05);
+      border-color: var(--border-hover);
+    }
+    
+    .api-key-warning {
+      font-size: 12px;
+      color: var(--gray-500);
+      margin-bottom: 20px;
+    }
+    
+    .dashboard-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--primary);
+      text-decoration: none;
+      font-size: 14px;
+      margin-top: 12px;
+    }
+    
+    .dashboard-link:hover { text-decoration: underline; }
+    
+    .signup-widget .hidden { display: none !important; }
+    
+    .spinner {
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+      display: inline-block;
+      margin-right: 8px;
+    }
+    
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
   </style>
 </head>
 <body>
@@ -815,9 +984,215 @@ function getHomepageHtml(): string {
     <div class="container">
       <h2>Start building today</h2>
       <p>Get your API key in seconds. No credit card required.</p>
-      <a href="mailto:hello@brighten.dev?subject=API%20Access%20Request" class="btn btn-primary btn-lg">Request Access</a>
+      
+      <div class="signup-widget" id="signup-widget">
+        <div id="auth-form-container">
+          <div id="signup-error" class="error-msg"></div>
+          <form id="signup-form">
+            <div class="form-group" id="name-field" style="display: none;">
+              <label class="form-label">Name</label>
+              <input type="text" id="signup-name" class="form-input" placeholder="Your name">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Email</label>
+              <input type="email" id="signup-email" class="form-input" placeholder="you@example.com" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Password</label>
+              <input type="password" id="signup-password" class="form-input" placeholder="Create a password" required>
+            </div>
+            <button type="submit" id="signup-submit" class="btn btn-primary btn-lg">Create Account</button>
+          </form>
+          <div class="divider">
+            <span id="auth-toggle-text">Already have an account?</span>
+            <a class="toggle-link" id="auth-toggle">Sign in</a>
+          </div>
+        </div>
+        
+        <div id="key-form-container" class="hidden">
+          <div class="success-state">
+            <div class="success-icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M20 6L9 17l-5-5"/>
+              </svg>
+            </div>
+            <h3>Welcome!</h3>
+            <p>Create your first API key to start making requests.</p>
+          </div>
+          <form id="create-key-form">
+            <div class="form-group">
+              <label class="form-label">Key Name</label>
+              <input type="text" id="key-name" class="form-input" placeholder="e.g., Development" value="My First Key">
+            </div>
+            <button type="submit" id="create-key-submit" class="btn btn-primary btn-lg">Create API Key</button>
+          </form>
+        </div>
+        
+        <div id="success-container" class="hidden">
+          <div class="success-state">
+            <div class="success-icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/>
+              </svg>
+            </div>
+            <h3>Your API Key</h3>
+            <p>Copy it now — you won't see it again.</p>
+          </div>
+          <div class="api-key-display">
+            <code id="api-key-value"></code>
+            <button type="button" class="copy-btn" id="copy-key">Copy</button>
+          </div>
+          <p class="api-key-warning">Store this key securely. For security, we only show it once.</p>
+          <a href="/dashboard" class="dashboard-link">
+            Go to Dashboard
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M5 12h14M12 5l7 7-7 7"/>
+            </svg>
+          </a>
+        </div>
+      </div>
     </div>
   </section>
+  
+  <script>
+    (function() {
+      const API = '/api';
+      let isLogin = false;
+      let authToken = localStorage.getItem('token');
+      
+      const $ = id => document.getElementById(id);
+      
+      const showError = msg => {
+        const el = $('signup-error');
+        el.textContent = msg;
+        el.classList.add('show');
+      };
+      
+      const hideError = () => $('signup-error').classList.remove('show');
+      
+      const setLoading = (btn, loading) => {
+        if (loading) {
+          btn.disabled = true;
+          btn.dataset.text = btn.textContent;
+          btn.innerHTML = '<span class="spinner"></span>Loading...';
+        } else {
+          btn.disabled = false;
+          btn.textContent = btn.dataset.text;
+        }
+      };
+      
+      $('auth-toggle').addEventListener('click', e => {
+        e.preventDefault();
+        isLogin = !isLogin;
+        $('name-field').style.display = isLogin ? 'none' : 'block';
+        $('signup-submit').textContent = isLogin ? 'Sign In' : 'Create Account';
+        $('auth-toggle-text').textContent = isLogin ? "Don't have an account?" : 'Already have an account?';
+        $('auth-toggle').textContent = isLogin ? 'Sign up' : 'Sign in';
+        $('signup-password').placeholder = isLogin ? 'Enter your password' : 'Create a password';
+        hideError();
+      });
+      
+      $('signup-form').addEventListener('submit', async e => {
+        e.preventDefault();
+        hideError();
+        const btn = $('signup-submit');
+        setLoading(btn, true);
+        
+        const email = $('signup-email').value;
+        const password = $('signup-password').value;
+        const name = $('signup-name').value;
+        
+        try {
+          if (isLogin) {
+            const res = await fetch(API + '/auth/login', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ email, password })
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'Login failed');
+            authToken = data.token;
+            localStorage.setItem('token', authToken);
+            $('auth-form-container').classList.add('hidden');
+            $('key-form-container').classList.remove('hidden');
+          } else {
+            const res = await fetch(API + '/auth/signup', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ email, password, name: name || email.split('@')[0] })
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'Signup failed');
+            
+            const loginRes = await fetch(API + '/auth/login', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ email, password })
+            });
+            const loginData = await loginRes.json();
+            if (!loginRes.ok) throw new Error('Account created! Please sign in.');
+            authToken = loginData.token;
+            localStorage.setItem('token', authToken);
+            $('auth-form-container').classList.add('hidden');
+            $('key-form-container').classList.remove('hidden');
+          }
+        } catch (err) {
+          showError(err.message);
+        } finally {
+          setLoading(btn, false);
+        }
+      });
+      
+      $('create-key-form').addEventListener('submit', async e => {
+        e.preventDefault();
+        const btn = $('create-key-submit');
+        setLoading(btn, true);
+        
+        const name = $('key-name').value || 'My API Key';
+        
+        try {
+          const res = await fetch(API + '/keys', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer ' + authToken
+            },
+            body: JSON.stringify({ name })
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || 'Failed to create key');
+          
+          $('api-key-value').textContent = data.key;
+          $('key-form-container').classList.add('hidden');
+          $('success-container').classList.remove('hidden');
+        } catch (err) {
+          alert(err.message);
+        } finally {
+          setLoading(btn, false);
+        }
+      });
+      
+      $('copy-key').addEventListener('click', () => {
+        navigator.clipboard.writeText($('api-key-value').textContent);
+        $('copy-key').textContent = 'Copied!';
+        setTimeout(() => $('copy-key').textContent = 'Copy', 2000);
+      });
+      
+      if (authToken) {
+        fetch(API + '/auth/me', {
+          headers: { 'Authorization': 'Bearer ' + authToken }
+        }).then(res => {
+          if (res.ok) {
+            $('auth-form-container').classList.add('hidden');
+            $('key-form-container').classList.remove('hidden');
+          } else {
+            localStorage.removeItem('token');
+            authToken = null;
+          }
+        }).catch(() => {});
+      }
+    })();
+  </script>
 
   <footer>
     <div class="footer-inner">

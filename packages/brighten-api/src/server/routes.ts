@@ -84,14 +84,16 @@ export function createAuthRoutes(): Router {
 
     try {
       const pb = getPocketBase();
-      pb.authStore.save(authHeader.substring(7), null);
+      const token = authHeader.substring(7);
+      pb.authStore.save(token, null);
 
       if (!pb.authStore.isValid) {
         res.status(401).json({ error: 'Invalid or expired token' });
         return;
       }
 
-      const user = await pb.collection('users').getOne(pb.authStore.record?.id || '');
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      const user = await pb.collection('users').getOne(payload.id);
       const usage = await getCurrentMonthUsage(user.id);
 
       res.json({
@@ -118,14 +120,16 @@ export function createAuthRoutes(): Router {
 
     try {
       const pb = getPocketBase();
-      pb.authStore.save(authHeader.substring(7), null);
+      const token = authHeader.substring(7);
+      pb.authStore.save(token, null);
 
-      if (!pb.authStore.isValid || !pb.authStore.record) {
+      if (!pb.authStore.isValid) {
         res.status(401).json({ error: 'Invalid or expired token' });
         return;
       }
 
-      const updated = await users.update(pb.authStore.record.id, { name });
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      const updated = await users.update(payload.id, { name });
 
       res.json({
         id: updated.id,
@@ -152,15 +156,22 @@ export function createApiKeysRoutes(): Router {
       return null;
     }
 
-    const pb = getPocketBase();
-    pb.authStore.save(authHeader.substring(7), null);
+    try {
+      const pb = getPocketBase();
+      const token = authHeader.substring(7);
+      pb.authStore.save(token, null);
 
-    if (!pb.authStore.isValid || !pb.authStore.record) {
+      if (!pb.authStore.isValid) {
+        res.status(401).json({ error: 'Invalid or expired token' });
+        return null;
+      }
+
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      return payload.id;
+    } catch {
       res.status(401).json({ error: 'Invalid or expired token' });
       return null;
     }
-
-    return pb.authStore.record.id;
   };
 
   router.get('/', async (req: Request, res: Response) => {
@@ -327,15 +338,22 @@ export function createUsageRoutes(): Router {
       return null;
     }
 
-    const pb = getPocketBase();
-    pb.authStore.save(authHeader.substring(7), null);
+    try {
+      const pb = getPocketBase();
+      const token = authHeader.substring(7);
+      pb.authStore.save(token, null);
 
-    if (!pb.authStore.isValid || !pb.authStore.record) {
+      if (!pb.authStore.isValid) {
+        res.status(401).json({ error: 'Invalid or expired token' });
+        return null;
+      }
+
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      return payload.id;
+    } catch {
       res.status(401).json({ error: 'Invalid or expired token' });
       return null;
     }
-
-    return pb.authStore.record.id;
   };
 
   router.get('/summary', async (req: Request, res: Response) => {
