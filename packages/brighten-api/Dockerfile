@@ -67,6 +67,12 @@ for i in $(seq 1 30); do
   sleep 1
 done
 
+if [ -n "$POCKETBASE_ADMIN_EMAIL" ] && [ -n "$POCKETBASE_ADMIN_PASSWORD" ]; then
+  echo "Creating PocketBase superuser..."
+  /usr/local/bin/pocketbase superuser upsert "$POCKETBASE_ADMIN_EMAIL" "$POCKETBASE_ADMIN_PASSWORD" \
+    --dir=/app/pb_data 2>/dev/null || echo "Superuser already exists or creation failed"
+fi
+
 echo "Starting Next.js server..."
 cd /app/packages/brighten-api
 exec node server.js
