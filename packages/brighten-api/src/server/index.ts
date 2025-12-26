@@ -957,11 +957,10 @@ function getHomepageHtml(): string {
         <div class="price-card">
           <div class="price-name">Free</div>
           <div class="price-amount">$0</div>
-          <div class="price-period">100 requests/month</div>
+          <div class="price-period">to get started</div>
           <ul class="price-features">
-            <li>All 5 operations</li>
+            <li>All operations</li>
             <li>Community support</li>
-            <li>Standard rate limits</li>
           </ul>
           <a href="#signup" class="btn btn-secondary">Get Started</a>
         </div>
@@ -969,11 +968,10 @@ function getHomepageHtml(): string {
           <div class="price-badge">Popular</div>
           <div class="price-name">Pro</div>
           <div class="price-amount">$29</div>
-          <div class="price-period">10,000 requests/month</div>
+          <div class="price-period">per month</div>
           <ul class="price-features">
-            <li>All 5 operations</li>
+            <li>All operations</li>
             <li>Priority support</li>
-            <li>Higher rate limits</li>
             <li>Usage analytics</li>
           </ul>
           <a href="#signup" class="btn btn-primary">Start Free Trial</a>
@@ -1011,47 +1009,7 @@ function getHomepageHtml(): string {
           </div>
         </div>
         
-        <div id="key-form-container" class="hidden">
-          <div class="success-state">
-            <div class="success-icon">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M20 6L9 17l-5-5"/>
-              </svg>
-            </div>
-            <h3>Welcome!</h3>
-            <p>Create your first API key to start making requests.</p>
-          </div>
-          <form id="create-key-form">
-            <div class="form-group">
-              <label class="form-label">Key Name</label>
-              <input type="text" id="key-name" class="form-input" placeholder="e.g., Development" value="My First Key">
-            </div>
-            <button type="submit" id="create-key-submit" class="btn btn-primary btn-lg">Create API Key</button>
-          </form>
-        </div>
-        
-        <div id="success-container" class="hidden">
-          <div class="success-state">
-            <div class="success-icon">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/>
-              </svg>
-            </div>
-            <h3>Your API Key</h3>
-            <p>Copy it now — you won't see it again.</p>
-          </div>
-          <div class="api-key-display">
-            <code id="api-key-value"></code>
-            <button type="button" class="copy-btn" id="copy-key">Copy</button>
-          </div>
-          <p class="api-key-warning">Store this key securely. For security, we only show it once.</p>
-          <a href="/dashboard" class="dashboard-link">
-            Go to Dashboard
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M5 12h14M12 5l7 7-7 7"/>
-            </svg>
-          </a>
-        </div>
+
       </div>
     </div>
   </section>
@@ -1113,10 +1071,8 @@ function getHomepageHtml(): string {
             });
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || 'Login failed');
-            authToken = data.token;
-            localStorage.setItem('token', authToken);
-            $('auth-form-container').classList.add('hidden');
-            $('key-form-container').classList.remove('hidden');
+            localStorage.setItem('token', data.token);
+            window.location.href = '/dashboard';
           } else {
             const res = await fetch(API + '/auth/signup', {
               method: 'POST',
@@ -1133,10 +1089,8 @@ function getHomepageHtml(): string {
             });
             const loginData = await loginRes.json();
             if (!loginRes.ok) throw new Error('Account created! Please sign in.');
-            authToken = loginData.token;
-            localStorage.setItem('token', authToken);
-            $('auth-form-container').classList.add('hidden');
-            $('key-form-container').classList.remove('hidden');
+            localStorage.setItem('token', loginData.token);
+            window.location.href = '/dashboard';
           }
         } catch (err) {
           showError(err.message);
@@ -1145,51 +1099,14 @@ function getHomepageHtml(): string {
         }
       });
       
-      $('create-key-form').addEventListener('submit', async e => {
-        e.preventDefault();
-        const btn = $('create-key-submit');
-        setLoading(btn, true);
-        
-        const name = $('key-name').value || 'My API Key';
-        
-        try {
-          const res = await fetch(API + '/keys', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': 'Bearer ' + authToken
-            },
-            body: JSON.stringify({ name })
-          });
-          const data = await res.json();
-          if (!res.ok) throw new Error(data.error || 'Failed to create key');
-          
-          $('api-key-value').textContent = data.key;
-          $('key-form-container').classList.add('hidden');
-          $('success-container').classList.remove('hidden');
-        } catch (err) {
-          alert(err.message);
-        } finally {
-          setLoading(btn, false);
-        }
-      });
-      
-      $('copy-key').addEventListener('click', () => {
-        navigator.clipboard.writeText($('api-key-value').textContent);
-        $('copy-key').textContent = 'Copied!';
-        setTimeout(() => $('copy-key').textContent = 'Copy', 2000);
-      });
-      
       if (authToken) {
         fetch(API + '/auth/me', {
           headers: { 'Authorization': 'Bearer ' + authToken }
         }).then(res => {
           if (res.ok) {
-            $('auth-form-container').classList.add('hidden');
-            $('key-form-container').classList.remove('hidden');
+            window.location.href = '/dashboard';
           } else {
             localStorage.removeItem('token');
-            authToken = null;
           }
         }).catch(() => {});
       }
