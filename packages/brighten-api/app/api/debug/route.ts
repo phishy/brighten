@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { users } from '@/lib/pocketbase';
+import { users, usageLogs, getPocketBase } from '@/lib/pocketbase';
 
 export const dynamic = 'force-dynamic';
 
@@ -43,9 +43,25 @@ export async function GET() {
     
     debug.envCheck = {
       hasPocketBaseUrl: !!process.env.POCKETBASE_URL,
+      pocketBaseUrl: process.env.POCKETBASE_URL || 'http://127.0.0.1:8090',
       hasAdminEmail: !!process.env.POCKETBASE_ADMIN_EMAIL,
       hasAdminPassword: !!process.env.POCKETBASE_ADMIN_PASSWORD,
     };
+    
+    try {
+      const pb = getPocketBase();
+      const health = await fetch(`${pb.baseURL}/api/health`);
+      debug.pocketbaseHealth = health.ok ? 'ok' : `error: ${health.status}`;
+    } catch (err) {
+      debug.pocketbaseHealth = err instanceof Error ? err.message : String(err);
+    }
+    
+    try {
+      const collections = await getPocketBase().collections.getFullList();
+      debug.collections = collections.map(c => c.name);
+    } catch (err) {
+      debug.collectionsError = err instanceof Error ? err.message : String(err);
+    }
     
   } catch (err) {
     debug.error = err instanceof Error ? err.message : String(err);
