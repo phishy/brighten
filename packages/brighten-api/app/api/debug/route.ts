@@ -84,8 +84,30 @@ export async function GET() {
               created: l.created,
             })),
           };
+        } catch (err: unknown) {
+          const pbErr = err as { response?: { data?: unknown }; originalError?: { data?: unknown } };
+          debug.usageLogsError = {
+            message: err instanceof Error ? err.message : String(err),
+            response: pbErr.response?.data || pbErr.originalError?.data || null,
+          };
+        }
+        
+        try {
+          const usageLogsCollection = await pb.collections.getOne('usage_logs');
+          debug.usageLogsSchema = usageLogsCollection.fields?.map((f: { name: string; type: string; id: string }) => ({
+            name: f.name,
+            type: f.type,
+            id: f.id,
+          }));
         } catch (err) {
-          debug.usageLogsError = err instanceof Error ? err.message : String(err);
+          debug.usageLogsSchemaError = err instanceof Error ? err.message : String(err);
+        }
+        
+        try {
+          const apiKeysCollection = await pb.collections.getOne('api_keys');
+          debug.apiKeysCollectionId = apiKeysCollection.id;
+        } catch (err) {
+          debug.apiKeysCollectionIdError = err instanceof Error ? err.message : String(err);
         }
         
         try {
