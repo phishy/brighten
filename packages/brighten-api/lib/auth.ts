@@ -15,21 +15,31 @@ function decodeJWT(token: string): { id?: string; exp?: number } | null {
   }
 }
 
-export async function getSession() {
+export async function getSession(): Promise<{ user: any; token: string } | null> {
   const cookieStore = await cookies();
   const token = cookieStore.get('token')?.value;
   
-  if (!token) return null;
+  if (!token) {
+    console.log('[getSession] No token cookie found');
+    return null;
+  }
   
   try {
     const payload = decodeJWT(token);
-    if (!payload?.id) return null;
+    if (!payload?.id) {
+      console.log('[getSession] No id in JWT payload');
+      return null;
+    }
     
-    if (payload.exp && payload.exp * 1000 < Date.now()) return null;
+    if (payload.exp && payload.exp * 1000 < Date.now()) {
+      console.log('[getSession] Token expired');
+      return null;
+    }
     
     const user = await users.getById(payload.id);
     return { user, token };
-  } catch {
+  } catch (error) {
+    console.error('[getSession] Error:', error instanceof Error ? error.message : error);
     return null;
   }
 }
