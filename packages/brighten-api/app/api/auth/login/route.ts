@@ -20,9 +20,13 @@ export async function POST(request: NextRequest) {
       },
     });
     
+    // Check if request is over HTTPS (via proxy header or direct)
+    const isSecure = request.headers.get('x-forwarded-proto') === 'https' ||
+                     request.url.startsWith('https://');
+    
     response.cookies.set('token', result.token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: isSecure,
       sameSite: 'lax',
       path: '/',
       maxAge: 60 * 60 * 24 * 7,
