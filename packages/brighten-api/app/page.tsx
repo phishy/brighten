@@ -229,15 +229,15 @@ export default function HomePage() {
                 href="/dashboard"
                 style={{
                   padding: '8px 16px',
-                  background: '#fff',
-                  color: '#000',
+                  background: 'linear-gradient(135deg, #0070f3 0%, #7928ca 100%)',
+                  color: '#fff',
                   borderRadius: 6,
                   fontSize: 14,
                   fontWeight: 500,
                   transition: 'all 0.15s',
                 }}
-                onMouseEnter={e => { e.currentTarget.style.background = '#eee'; }}
-                onMouseLeave={e => { e.currentTarget.style.background = '#fff'; }}
+                onMouseEnter={e => { e.currentTarget.style.opacity = '0.9'; }}
+                onMouseLeave={e => { e.currentTarget.style.opacity = '1'; }}
               >
                 Dashboard
               </a>
@@ -424,14 +424,14 @@ export default function HomePage() {
                 href="/dashboard"
                 style={{
                   padding: '12px 24px',
-                  background: '#fff',
-                  color: '#000',
+                  background: 'linear-gradient(135deg, #0070f3 0%, #7928ca 100%)',
+                  color: '#fff',
                   borderRadius: 8,
                   fontSize: 15,
                   fontWeight: 500,
                   transition: 'all 0.15s',
                 }}
-                onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 8px 30px rgba(255,255,255,0.15)'; }}
+                onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 8px 30px rgba(0,112,243,0.3)'; }}
                 onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none'; }}
               >
                 Go to Dashboard →
