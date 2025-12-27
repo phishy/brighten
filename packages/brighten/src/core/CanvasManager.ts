@@ -70,6 +70,9 @@ export class CanvasManager extends EventEmitter<EditorEvents> {
     this.displayCanvas.style.width = `${size.width}px`;
     this.displayCanvas.style.height = `${size.height}px`;
     this.displayCtx.scale(this.devicePixelRatio, this.devicePixelRatio);
+    if (this.canvasSize.width > 0 && this.canvasSize.height > 0) {
+      this.fitToView();
+    }
     this.queueRender();
   }
 
